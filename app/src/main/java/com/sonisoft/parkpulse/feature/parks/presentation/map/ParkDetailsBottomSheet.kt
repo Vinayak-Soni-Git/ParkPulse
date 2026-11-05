@@ -28,7 +28,8 @@ fun ParkDetailsBottomSheet(
     park: Park,
     distance: Float?,
     bearing: String?,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onStartSurvey: (String) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -217,6 +218,22 @@ fun ParkDetailsBottomSheet(
                         )
                     }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Button(
+                onClick = {
+                    onDismiss()
+                    onStartSurvey(park.id)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = ForestGreen),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.Assignment, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Start Survey / History", fontWeight = FontWeight.Bold)
             }
         }
     }

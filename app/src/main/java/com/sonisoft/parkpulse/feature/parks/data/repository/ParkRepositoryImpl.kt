@@ -1,10 +1,13 @@
 package com.sonisoft.parkpulse.feature.parks.data.repository
 
 import com.sonisoft.parkpulse.feature.parks.data.local.dao.ParkDao
+import com.sonisoft.parkpulse.feature.parks.data.local.dao.SurveyDao
+import com.sonisoft.parkpulse.feature.parks.data.local.entity.SurveyEntity
 import com.sonisoft.parkpulse.feature.parks.data.seed.ParkSeedImporter
 import com.sonisoft.parkpulse.feature.parks.domain.model.DashboardStatistics
 import com.sonisoft.parkpulse.feature.parks.domain.model.Park
 import com.sonisoft.parkpulse.feature.parks.domain.model.ParkStatus
+import com.sonisoft.parkpulse.feature.parks.domain.model.Survey
 import com.sonisoft.parkpulse.feature.parks.domain.repository.ParkRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -15,6 +18,7 @@ import javax.inject.Singleton
 @Singleton
 class ParkRepositoryImpl @Inject constructor(
     private val parkDao: ParkDao,
+    private val surveyDao: SurveyDao,
     private val parkSeedImporter: ParkSeedImporter
 ) : ParkRepository {
 
@@ -95,5 +99,16 @@ class ParkRepositoryImpl @Inject constructor(
         }
         
         parkDao.insertParksWithBoundaries(listOf(parkEntity), pointEntities)
+    }
+
+    override suspend fun saveSurvey(survey: Survey) {
+        surveyDao.insertSurvey(SurveyEntity.fromDomainModel(survey))
+        parkDao.updateParkLastSurveyDate(survey.parkId, survey.createdAt)
+    }
+
+    override fun getSurveysForPark(parkId: String): Flow<List<Survey>> {
+        return surveyDao.getSurveysForPark(parkId).map { entities ->
+            entities.map { it.toDomainModel() }
+        }
     }
 }

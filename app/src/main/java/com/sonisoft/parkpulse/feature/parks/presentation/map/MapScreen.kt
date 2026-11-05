@@ -85,7 +85,8 @@ import android.view.MotionEvent
 @Composable
 fun MapScreen(
     viewModel: MapViewModel = hiltViewModel(),
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onStartSurvey: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -167,7 +168,8 @@ fun MapScreen(
                     park = park,
                     distance = uiState.distanceToSelectedPark,
                     bearing = uiState.bearingToSelectedPark,
-                    onDismiss = { viewModel.selectPark(null) }
+                    onDismiss = { viewModel.selectPark(null) },
+                    onStartSurvey = onStartSurvey
                 )
             }
             

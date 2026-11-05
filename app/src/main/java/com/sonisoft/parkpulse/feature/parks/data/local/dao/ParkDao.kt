@@ -37,6 +37,9 @@ interface ParkDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertParks(parks: List<ParkEntity>)
 
+    @Query("UPDATE parks SET lastSurveyDate = :lastSurveyDate WHERE id = :parkId")
+    suspend fun updateParkLastSurveyDate(parkId: String, lastSurveyDate: Long)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBoundaryPoints(points: List<ParkBoundaryPointEntity>)
 

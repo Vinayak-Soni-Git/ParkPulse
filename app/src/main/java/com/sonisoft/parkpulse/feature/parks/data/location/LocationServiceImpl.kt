@@ -12,6 +12,7 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.Priority
 import com.sonisoft.parkpulse.feature.parks.domain.location.LocationService
 import com.sonisoft.parkpulse.feature.parks.domain.model.GeoPoint
+import com.sonisoft.parkpulse.feature.parks.domain.model.UserLocation
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -43,6 +44,58 @@ class LocationServiceImpl @Inject constructor(
                 super.onLocationResult(result)
                 result.locations.lastOrNull()?.let { location ->
                     trySend(GeoPoint(location.latitude, location.longitude))
+                }
+            }
+        }
+
+        fusedLocationClient.requestLocationUpdates(
+            locationRequest,
+            locationCallback,
+            Looper.getMainLooper()
+        )
+
+        awaitClose {
+            fusedLocationClient.removeLocationUpdates(locationCallback)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    override fun requestDetailedLocationUpdates(): Flow<UserLocation?> = callbackFlow {
+        if (!hasLocationPermission()) {
+            trySend(null)
+            close()
+            return@callbackFlow
+        }
+
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            location?.let {
+                trySend(
+                    UserLocation(
+                        latitude = it.latitude,
+                        longitude = it.longitude,
+                        accuracyMeters = it.accuracy,
+                        timestamp = if (it.time > 0) it.time else System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000L)
+            .setMinUpdateDistanceMeters(2f)
+            .build()
+
+        val locationCallback = object : LocationCallback() {
+            override fun onLocationResult(result: LocationResult) {
+                super.onLocationResult(result)
+                result.locations.lastOrNull()?.let { location ->
+                    trySend(
+                        UserLocation(
+                            latitude = location.latitude,
+                            longitude = location.longitude,
+                            accuracyMeters = location.accuracy,
+                            timestamp = if (location.time > 0) location.time else System.currentTimeMillis()
+                        )
+                    )
                 }
             }
         }

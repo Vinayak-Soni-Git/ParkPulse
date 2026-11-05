@@ -3,6 +3,7 @@ package com.sonisoft.parkpulse.feature.parks.domain.repository
 import com.sonisoft.parkpulse.feature.parks.domain.model.DashboardStatistics
 import com.sonisoft.parkpulse.feature.parks.domain.model.Park
 import com.sonisoft.parkpulse.feature.parks.domain.model.ParkStatus
+import com.sonisoft.parkpulse.feature.parks.domain.model.Survey
 import kotlinx.coroutines.flow.Flow
 
 interface ParkRepository {
@@ -14,4 +15,6 @@ interface ParkRepository {
     fun getDashboardStatistics(): Flow<DashboardStatistics>
     suspend fun initializeDatabaseIfNeeded()
     suspend fun savePark(park: Park)
+    suspend fun saveSurvey(survey: Survey)
+    fun getSurveysForPark(parkId: String): Flow<List<Survey>>
 }

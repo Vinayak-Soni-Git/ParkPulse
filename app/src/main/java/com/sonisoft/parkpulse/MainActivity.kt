@@ -83,14 +83,15 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(Screen.Map.route) {
                             com.sonisoft.parkpulse.feature.parks.presentation.map.MapScreen(
-                                onBackClick = { navController.popBackStack() }
+                                onBackClick = { navController.popBackStack() },
+                                onStartSurvey = { parkId ->
+                                    navController.navigate(Screen.Survey.createRoute(parkId))
+                                }
                             )
                         }
-                        composable(Screen.Survey.route) { backStackEntry ->
-                            val parkId = backStackEntry.arguments?.getString("parkId")
-                            Text(
-                                text = "Survey Screen for park: $parkId",
-                                modifier = Modifier.fillMaxSize().padding(16.dp)
+                        composable(Screen.Survey.route) {
+                            com.sonisoft.parkpulse.feature.parks.presentation.survey.SurveyScreen(
+                                onBackClick = { navController.popBackStack() }
                             )
                         }
                         // Other screens will be added here

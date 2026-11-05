@@ -2,7 +2,10 @@ package com.sonisoft.parkpulse.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.sonisoft.parkpulse.feature.parks.data.local.dao.ParkDao
+import com.sonisoft.parkpulse.feature.parks.data.local.dao.SurveyDao
 import com.sonisoft.parkpulse.feature.parks.data.local.database.ParkDatabase
 import dagger.Module
 import dagger.Provides
@@ -15,6 +18,31 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    private val MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS `surveys` (
+                    `id` TEXT NOT NULL,
+                    `parkId` TEXT NOT NULL,
+                    `checkInTimestamp` INTEGER NOT NULL,
+                    `latitude` REAL NOT NULL,
+                    `longitude` REAL NOT NULL,
+                    `accuracyMeters` REAL NOT NULL,
+                    `treeCount` INTEGER NOT NULL,
+                    `hasLighting` INTEGER NOT NULL,
+                    `cleanliness` TEXT NOT NULL,
+                    `notes` TEXT,
+                    `createdAt` INTEGER NOT NULL,
+                    `updatedAt` INTEGER NOT NULL,
+                    `isPendingSync` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`parkId`) REFERENCES `parks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+            """.trimIndent())
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_surveys_parkId` ON `surveys` (`parkId`)")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideParkDatabase(@ApplicationContext context: Context): ParkDatabase {
@@ -23,12 +51,18 @@ object DatabaseModule {
             ParkDatabase::class.java,
             "park_pulse_db"
         )
-        .fallbackToDestructiveMigration() // Allowed during dev phase for take-home if needed, but schema is v1
+        .addMigrations(MIGRATION_1_2)
+        .fallbackToDestructiveMigration()
         .build()
     }
 
     @Provides
     fun provideParkDao(database: ParkDatabase): ParkDao {
         return database.parkDao()
+    }
+
+    @Provides
+    fun provideSurveyDao(database: ParkDatabase): SurveyDao {
+        return database.surveyDao()
     }
 }
