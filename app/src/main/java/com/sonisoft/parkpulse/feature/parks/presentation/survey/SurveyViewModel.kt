@@ -1,12 +1,16 @@
 package com.sonisoft.parkpulse.feature.parks.presentation.survey
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sonisoft.parkpulse.feature.parks.domain.location.LocationService
 import com.sonisoft.parkpulse.feature.parks.domain.model.CleanlinessRating
+import com.sonisoft.parkpulse.feature.parks.domain.model.GeoPoint
 import com.sonisoft.parkpulse.feature.parks.domain.model.Survey
+import com.sonisoft.parkpulse.feature.parks.domain.model.UserLocation
 import com.sonisoft.parkpulse.feature.parks.domain.repository.ParkRepository
+import com.sonisoft.parkpulse.feature.parks.domain.usecase.GenerateTestCoordinatesUseCase
 import com.sonisoft.parkpulse.feature.parks.domain.usecase.ValidateCheckInUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
@@ -24,7 +28,8 @@ class SurveyViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val parkRepository: ParkRepository,
     private val locationService: LocationService,
-    private val validateCheckInUseCase: ValidateCheckInUseCase
+    private val validateCheckInUseCase: ValidateCheckInUseCase,
+    private val generateTestCoordinatesUseCase: GenerateTestCoordinatesUseCase
 ) : ViewModel() {
 
     val parkId: String = checkNotNull(savedStateHandle["parkId"])
@@ -43,7 +48,22 @@ class SurveyViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             parkRepository.getParkById(parkId).collectLatest { park ->
-                _uiState.update { it.copy(park = park, isLoading = false) }
+                _uiState.update { state ->
+                    val currentLocation = if (state.isSimulationActive) state.userLocation else state.userLocation
+                    val checkInRes = validateCheckInUseCase(
+                        userLocation = currentLocation,
+                        hasPermission = state.hasLocationPermission || state.isSimulationActive,
+                        park = park
+                    )
+
+                    logGeofenceValidation(park?.id, park?.name, currentLocation, checkInRes)
+
+                    state.copy(
+                        park = park,
+                        isLoading = false,
+                        checkInResult = checkInRes
+                    )
+                }
             }
         }
 
@@ -74,27 +94,135 @@ class SurveyViewModel @Inject constructor(
         locationJob = viewModelScope.launch {
             locationService.requestDetailedLocationUpdates().collectLatest { location ->
                 _uiState.update { state ->
-                    val checkInRes = state.park?.let { park ->
-                        validateCheckInUseCase(
+                    if (state.isSimulationActive) {
+                        // Don't overwrite active simulation with real GPS
+                        state
+                    } else {
+                        val checkInRes = validateCheckInUseCase(
                             userLocation = location,
                             hasPermission = state.hasLocationPermission,
-                            parkBoundary = park.boundaryPoints
+                            park = state.park
+                        )
+
+                        logGeofenceValidation(state.park?.id, state.park?.name, location, checkInRes)
+
+                        state.copy(
+                            userLocation = location,
+                            checkInResult = checkInRes
                         )
                     }
-
-                    state.copy(
-                        userLocation = location,
-                        checkInResult = checkInRes
-                    )
                 }
             }
+        }
+    }
+
+    // DEBUG SIMULATION METHODS
+    fun applySimulation(
+        scenario: SimulationScenario,
+        accuracyMeters: Float,
+        customLatText: String = "",
+        customLonText: String = ""
+    ) {
+        val park = _uiState.value.park
+
+        val targetPoint: GeoPoint? = when (scenario) {
+            SimulationScenario.REAL_GPS -> {
+                resetToRealGps()
+                return
+            }
+            SimulationScenario.INSIDE_PARK -> {
+                if (park != null) generateTestCoordinatesUseCase.generateInsidePoint(park) else null
+            }
+            SimulationScenario.OUTSIDE_PARK -> {
+                if (park != null) generateTestCoordinatesUseCase.generateOutsidePoint(park) else null
+            }
+            SimulationScenario.CUSTOM -> {
+                val lat = customLatText.toDoubleOrNull()
+                val lon = customLonText.toDoubleOrNull()
+                if (lat != null && lon != null) GeoPoint(lat, lon) else null
+            }
+        }
+
+        if (targetPoint == null) {
+            _uiState.update { it.copy(error = "Could not generate coordinates for selected scenario.") }
+            return
+        }
+
+        val simLocation = UserLocation(
+            latitude = targetPoint.latitude,
+            longitude = targetPoint.longitude,
+            accuracyMeters = accuracyMeters,
+            timestamp = System.currentTimeMillis(),
+            isSimulated = true
+        )
+
+        _uiState.update { state ->
+            val checkInRes = validateCheckInUseCase(
+                userLocation = simLocation,
+                hasPermission = true, // Simulation bypasses permission check for testing eligibility
+                park = state.park
+            )
+
+            logGeofenceValidation(state.park?.id, state.park?.name, simLocation, checkInRes)
+
+            state.copy(
+                isSimulationActive = true,
+                simulationScenario = scenario,
+                selectedAccuracyMeters = accuracyMeters,
+                customLatitudeText = customLatText,
+                customLongitudeText = customLonText,
+                userLocation = simLocation,
+                checkInResult = checkInRes,
+                error = null
+            )
+        }
+    }
+
+    fun resetToRealGps() {
+        _uiState.update { state ->
+            state.copy(
+                isSimulationActive = false,
+                simulationScenario = SimulationScenario.REAL_GPS,
+                error = null
+            )
+        }
+        startLocationUpdates()
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
+    private fun logGeofenceValidation(
+        parkId: String?,
+        parkName: String?,
+        location: UserLocation?,
+        result: ValidateCheckInUseCase.Result
+    ) {
+        try {
+            Log.d("SurveyGeofence", "--- Geofence Validation Diagnostic ---")
+            Log.d("SurveyGeofence", "Selected Park ID: $parkId ($parkName)")
+            Log.d("SurveyGeofence", "User Location: lat=${location?.latitude}, lon=${location?.longitude}, acc=${location?.accuracyMeters}m, sim=${location?.isSimulated}")
+            Log.d("SurveyGeofence", "Validation Status: ${result.status}, Eligible: ${result.isEligibleForCheckIn}")
+            Log.d("SurveyGeofence", "Message: ${result.message}")
+        } catch (_: Throwable) {
+            // Ignored during JVM unit tests
         }
     }
 
     fun performCheckIn() {
         val state = _uiState.value
         val res = state.checkInResult
-        if (res is ValidateCheckInUseCase.Result.Success) {
+
+        // DEFENSIVE SAFETY GUARD: Block simulated check-ins
+        if (state.isSimulationActive || res?.userLocation?.isSimulated == true) {
+            _uiState.update {
+                it.copy(error = "Simulated location cannot be used for genuine check-in. Reset to Real GPS first.")
+            }
+            return
+        }
+
+        if (res?.isEligibleForCheckIn == true && res.userLocation != null) {
             _uiState.update {
                 it.copy(
                     validatedLocation = res.userLocation,
@@ -163,11 +291,20 @@ class SurveyViewModel @Inject constructor(
 
     fun saveSurvey() {
         val state = _uiState.value
+
+        // DEFENSIVE SAFETY GUARD: Block simulated survey persistence
+        if (state.isSimulationActive || state.userLocation?.isSimulated == true || state.validatedLocation?.isSimulated == true) {
+            _uiState.update { it.copy(error = "Simulated location cannot create a real survey record.") }
+            return
+        }
+
         val park = state.park ?: return
         val loc = state.validatedLocation ?: return
         val trees = state.treeCountText.toIntOrNull() ?: 0
         val lighting = state.hasLighting ?: return
         val cleanliness = state.cleanliness ?: return
+
+        if (state.checkInResult?.isEligibleForCheckIn != true) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }

@@ -19,14 +19,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Park
 import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -150,7 +158,11 @@ fun SurveyScreen(
                             )
                         )
                     },
-                    onConfirmCheckIn = { viewModel.performCheckIn() }
+                    onConfirmCheckIn = { viewModel.performCheckIn() },
+                    onApplySimulation = { scenario, accuracy, lat, lon ->
+                        viewModel.applySimulation(scenario, accuracy, lat, lon)
+                    },
+                    onResetGps = { viewModel.resetToRealGps() }
                 )
 
                 SurveyStep.FORM -> InspectionFormView(
@@ -190,7 +202,9 @@ fun SurveyScreen(
 private fun CheckInView(
     uiState: SurveyUiState,
     onRequestPermission: () -> Unit,
-    onConfirmCheckIn: () -> Unit
+    onConfirmCheckIn: () -> Unit,
+    onApplySimulation: (SimulationScenario, Float, String, String) -> Unit,
+    onResetGps: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -199,6 +213,46 @@ private fun CheckInView(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        if (uiState.isSimulationActive) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "SIMULATION ACTIVE – Survey check-in and saving are disabled. Reset to Real GPS before starting a genuine survey.",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        uiState.error?.let { err ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = ErrorRed.copy(alpha = 0.15f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = err,
+                    color = ErrorRed,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = CardWhite),
@@ -233,7 +287,7 @@ private fun CheckInView(
                     Icon(Icons.Rounded.LocationOn, contentDescription = null, tint = ForestGreen)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Live Location Status",
+                        text = if (uiState.isSimulationActive) "Simulated Location Status" else "Live Location Status",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = Charcoal
@@ -271,17 +325,13 @@ private fun CheckInView(
 
         // Validation Result Banner
         val result = uiState.checkInResult
-        val isSuccess = result is ValidateCheckInUseCase.Result.Success
+        val isSuccess = result?.isEligibleForCheckIn == true
 
         val bannerColor = if (isSuccess) ForestGreen.copy(alpha = 0.15f) else ErrorRed.copy(alpha = 0.15f)
         val textColor = if (isSuccess) ForestGreenDark else ErrorRed
         val icon = if (isSuccess) Icons.Rounded.CheckCircle else Icons.Rounded.ErrorOutline
 
-        val message = when (result) {
-            is ValidateCheckInUseCase.Result.Success -> result.message
-            is ValidateCheckInUseCase.Result.Failure -> result.reason
-            null -> "Initializing location validation..."
-        }
+        val message = result?.message ?: "Initializing location validation..."
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -305,7 +355,7 @@ private fun CheckInView(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        if (!uiState.hasLocationPermission) {
+        if (!uiState.hasLocationPermission && !uiState.isSimulationActive) {
             Button(
                 onClick = onRequestPermission,
                 colors = ButtonDefaults.buttonColors(containerColor = ForestGreen),
@@ -316,12 +366,21 @@ private fun CheckInView(
         } else {
             Button(
                 onClick = onConfirmCheckIn,
-                enabled = isSuccess,
+                enabled = isSuccess && !uiState.isSimulationActive,
                 colors = ButtonDefaults.buttonColors(containerColor = ForestGreen),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Confirm Check-in & Start Form")
             }
+        }
+
+        if (com.sonisoft.parkpulse.BuildConfig.DEBUG) {
+            Spacer(modifier = Modifier.height(28.dp))
+            LocationSimulatorPanel(
+                uiState = uiState,
+                onApplySimulation = onApplySimulation,
+                onResetGps = onResetGps
+            )
         }
     }
 }
@@ -621,6 +680,131 @@ private fun HistoryView(surveys: List<Survey>) {
                             Text("Notes: $notes", style = MaterialTheme.typography.bodySmall, color = Charcoal)
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun LocationSimulatorPanel(
+    uiState: SurveyUiState,
+    onApplySimulation: (SimulationScenario, Float, String, String) -> Unit,
+    onResetGps: () -> Unit
+) {
+    var selectedScenario by remember { mutableStateOf(uiState.simulationScenario) }
+    var selectedAccuracy by remember { mutableFloatStateOf(uiState.selectedAccuracyMeters) }
+    var customLat by remember { mutableStateOf(uiState.customLatitudeText) }
+    var customLon by remember { mutableStateOf(uiState.customLongitudeText) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Charcoal.copy(alpha = 0.05f)),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, CharcoalLight.copy(alpha = 0.3f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.BugReport, contentDescription = null, tint = ForestGreenDark)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Developer Tools - Location Simulator",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = ForestGreenDark
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text("Scenario:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Charcoal)
+            Spacer(modifier = Modifier.height(6.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    SimulationScenario.REAL_GPS to "Real GPS",
+                    SimulationScenario.INSIDE_PARK to "Inside Park",
+                    SimulationScenario.OUTSIDE_PARK to "Outside Park",
+                    SimulationScenario.CUSTOM to "Custom"
+                ).forEach { (scenario, label) ->
+                    FilterChip(
+                        selected = selectedScenario == scenario,
+                        onClick = {
+                            selectedScenario = scenario
+                            if (scenario == SimulationScenario.REAL_GPS) {
+                                onResetGps()
+                            }
+                        },
+                        label = { Text(label) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = ForestGreen,
+                            selectedLabelColor = CardWhite
+                        )
+                    )
+                }
+            }
+
+            if (selectedScenario == SimulationScenario.CUSTOM) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = customLat,
+                        onValueChange = { customLat = it },
+                        label = { Text("Latitude") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    OutlinedTextField(
+                        value = customLon,
+                        onValueChange = { customLon = it },
+                        label = { Text("Longitude") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text("GPS Accuracy:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Charcoal)
+            Spacer(modifier = Modifier.height(6.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(3f, 10f, 20f, 25f, 26f, 50f, 100f).forEach { acc ->
+                    FilterChip(
+                        selected = selectedAccuracy == acc,
+                        onClick = { selectedAccuracy = acc },
+                        label = { Text("${acc.toInt()}m") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = ForestGreen,
+                            selectedLabelColor = CardWhite
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = {
+                        selectedScenario = SimulationScenario.REAL_GPS
+                        onResetGps()
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Reset to Real GPS")
+                }
+
+                Button(
+                    onClick = {
+                        onApplySimulation(selectedScenario, selectedAccuracy, customLat, customLon)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ForestGreen),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Apply Simulation")
                 }
             }
         }

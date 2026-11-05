@@ -14,6 +14,13 @@ enum class SurveyStep {
     HISTORY
 }
 
+enum class SimulationScenario {
+    REAL_GPS,
+    INSIDE_PARK,
+    OUTSIDE_PARK,
+    CUSTOM
+}
+
 data class SurveyUiState(
     val step: SurveyStep = SurveyStep.CHECK_IN,
     val park: Park? = null,
@@ -26,6 +33,13 @@ data class SurveyUiState(
     val checkInResult: ValidateCheckInUseCase.Result? = null,
     val validatedLocation: UserLocation? = null,
     val checkInTimestamp: Long = 0L,
+
+    // Simulation State (DEBUG ONLY)
+    val isSimulationActive: Boolean = false,
+    val simulationScenario: SimulationScenario = SimulationScenario.REAL_GPS,
+    val selectedAccuracyMeters: Float = 3.0f,
+    val customLatitudeText: String = "",
+    val customLongitudeText: String = "",
 
     // Form Data
     val treeCountText: String = "0",

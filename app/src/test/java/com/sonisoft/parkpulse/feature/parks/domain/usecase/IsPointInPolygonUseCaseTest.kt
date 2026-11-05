@@ -42,8 +42,31 @@ class IsPointInPolygonUseCaseTest {
     }
 
     @Test
+    fun `point 90km away from park returns false even with closed ring polygon`() {
+        // "A block park" closed OSM ring
+        val aBlockParkRing = listOf(
+            GeoPoint(26.9138498, 75.734482),
+            GeoPoint(26.9138952, 75.7357185),
+            GeoPoint(26.9135126, 75.735748),
+            GeoPoint(26.9135867, 75.7366654),
+            GeoPoint(26.9139359, 75.7366734),
+            GeoPoint(26.9139933, 75.7376122),
+            GeoPoint(26.9138187, 75.7376336),
+            GeoPoint(26.9137972, 75.7368075),
+            GeoPoint(26.9134982, 75.7367941),
+            GeoPoint(26.9134241, 75.7356488),
+            GeoPoint(26.9137254, 75.73563),
+            GeoPoint(26.9136895, 75.7345089),
+            GeoPoint(26.9138498, 75.734482) // duplicated tail point
+        )
+
+        val farAwayUserPoint = GeoPoint(27.24248, 76.61408)
+
+        assertFalse("Faraway user point must be rejected", useCase(farAwayUserPoint, aBlockParkRing))
+    }
+
+    @Test
     fun `point inside irregular polygon returns true`() {
-        // L-shaped polygon
         val LShape = listOf(
             GeoPoint(0.0, 0.0),
             GeoPoint(0.0, 2.0),

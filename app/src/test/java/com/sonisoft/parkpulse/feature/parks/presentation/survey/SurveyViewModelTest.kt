@@ -9,6 +9,7 @@ import com.sonisoft.parkpulse.feature.parks.domain.model.ParkStatus
 import com.sonisoft.parkpulse.feature.parks.domain.model.ParkType
 import com.sonisoft.parkpulse.feature.parks.domain.model.BoundaryQuality
 import com.sonisoft.parkpulse.feature.parks.domain.repository.ParkRepository
+import com.sonisoft.parkpulse.feature.parks.domain.usecase.GenerateTestCoordinatesUseCase
 import com.sonisoft.parkpulse.feature.parks.domain.usecase.IsPointInPolygonUseCase
 import com.sonisoft.parkpulse.feature.parks.domain.usecase.ValidateCheckInUseCase
 import io.mockk.coEvery
@@ -71,7 +72,8 @@ class SurveyViewModelTest {
             savedStateHandle,
             parkRepository,
             locationService,
-            validateCheckInUseCase
+            validateCheckInUseCase,
+            GenerateTestCoordinatesUseCase(IsPointInPolygonUseCase())
         )
     }
 
