@@ -194,7 +194,7 @@ class MapViewModel @Inject constructor(
                 type = type,
                 areaInSquareMeters = state.drawingArea,
                 perimeterInMeters = state.drawingPerimeter,
-                status = ParkStatus.UNKNOWN, // Initial status
+                status = ParkStatus.OPEN,
                 lastSurveyDate = null,
                 isPendingSync = true,
                 boundaryPoints = state.drawingPoints,

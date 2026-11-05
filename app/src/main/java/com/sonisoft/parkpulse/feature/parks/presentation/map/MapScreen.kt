@@ -5,14 +5,21 @@ import android.content.Context
 import android.preference.PreferenceManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -20,22 +27,21 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Undo
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import org.osmdroid.events.MapEventsReceiver
-import org.osmdroid.views.overlay.MapEventsOverlay
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.material3.TextButton
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -48,25 +54,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.sonisoft.parkpulse.core.designsystem.theme.CardWhite
 import com.sonisoft.parkpulse.core.designsystem.theme.Charcoal
+import com.sonisoft.parkpulse.core.designsystem.theme.CharcoalLight
 import com.sonisoft.parkpulse.core.designsystem.theme.ForestGreen
+import com.sonisoft.parkpulse.core.designsystem.theme.ForestGreenDark
+import com.sonisoft.parkpulse.core.designsystem.theme.LightGrey
 import com.sonisoft.parkpulse.feature.parks.domain.model.GeoPoint
 import com.sonisoft.parkpulse.feature.parks.domain.model.Park
 import com.sonisoft.parkpulse.feature.parks.domain.model.ParkStatus
 import kotlinx.coroutines.launch
 import org.osmdroid.config.Configuration
+import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint as OsmGeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.Polygon
-import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
+import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import android.view.MotionEvent
 
 @Composable
@@ -303,12 +316,15 @@ private fun OsmMapView(
                             icon = context.getDrawable(android.R.drawable.ic_menu_edit)
                             isDraggable = true
                             setOnMarkerDragListener(object : Marker.OnMarkerDragListener {
-                                override fun onMarkerDrag(marker: Marker) {}
+                                override fun onMarkerDrag(marker: Marker) {
+                                    onUpdateDrawingPoint(index, GeoPoint(marker.position.latitude, marker.position.longitude))
+                                }
                                 override fun onMarkerDragEnd(marker: Marker) {
                                     onUpdateDrawingPoint(index, GeoPoint(marker.position.latitude, marker.position.longitude))
                                 }
                                 override fun onMarkerDragStart(marker: Marker) {}
                             })
+                            setOnMarkerClickListener { _, _ -> true }
                         }
                         map.overlays.add(marker)
                     }
@@ -331,63 +347,112 @@ private fun DrawingControls(
     onCancel: () -> Unit,
     onFinish: () -> Unit
 ) {
-    Card(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Charcoal),
-        shape = RoundedCornerShape(16.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .navigationBarsPadding(),
+        shape = RoundedCornerShape(16.dp),
+        color = CardWhite,
+        shadowElevation = 8.dp
     ) {
-        androidx.compose.foundation.layout.Column(
-            modifier = Modifier.padding(16.dp)
+        Column(
+            modifier = Modifier.padding(14.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Drawing Park ($drawingPointsCount points)",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                if (drawingPointsCount >= 3) {
-                    Text(
-                        text = String.format(java.util.Locale.getDefault(), "Area: %.0f sq m", drawingArea),
-                        color = ForestGreen,
-                        fontWeight = FontWeight.Bold
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(ForestGreen, shape = androidx.compose.foundation.shape.CircleShape)
                     )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Drawing Park ($drawingPointsCount pts)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Charcoal
+                    )
+                }
+
+                if (drawingPointsCount >= 3) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = ForestGreen.copy(alpha = 0.12f)
+                    ) {
+                        Text(
+                            text = String.format(java.util.Locale.getDefault(), "%,.0f m²", drawingArea),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = ForestGreenDark,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = onCancel) {
-                    Icon(Icons.Filled.Close, contentDescription = null, tint = Color.LightGray)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Cancel", color = Color.LightGray)
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(14.dp), tint = CharcoalLight)
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text("Cancel", style = MaterialTheme.typography.labelMedium, color = CharcoalLight)
                 }
-                
-                TextButton(onClick = onUndo, enabled = drawingPointsCount > 0) {
-                    Icon(Icons.Filled.Undo, contentDescription = null, tint = if (drawingPointsCount > 0) Color.White else Color.Gray)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Undo", color = if (drawingPointsCount > 0) Color.White else Color.Gray)
+
+                OutlinedButton(
+                    onClick = onUndo,
+                    enabled = drawingPointsCount > 0,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Filled.Undo, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text("Undo", style = MaterialTheme.typography.labelMedium)
                 }
-                
-                TextButton(onClick = onClear, enabled = drawingPointsCount > 0) {
-                    Icon(Icons.Filled.Clear, contentDescription = null, tint = if (drawingPointsCount > 0) Color.White else Color.Gray)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Clear", color = if (drawingPointsCount > 0) Color.White else Color.Gray)
+
+                OutlinedButton(
+                    onClick = onClear,
+                    enabled = drawingPointsCount > 0,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Filled.Clear, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text("Clear", style = MaterialTheme.typography.labelMedium)
                 }
-                
-                TextButton(onClick = onFinish, enabled = drawingPointsCount >= 3) {
-                    Icon(Icons.Filled.Check, contentDescription = null, tint = if (drawingPointsCount >= 3) ForestGreen else Color.Gray)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Finish", color = if (drawingPointsCount >= 3) ForestGreen else Color.Gray)
+
+                Button(
+                    onClick = onFinish,
+                    enabled = drawingPointsCount >= 3,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ForestGreen,
+                        contentColor = CardWhite,
+                        disabledContainerColor = LightGrey,
+                        disabledContentColor = CharcoalLight
+                    ),
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text("Finish", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 }
             }
         }

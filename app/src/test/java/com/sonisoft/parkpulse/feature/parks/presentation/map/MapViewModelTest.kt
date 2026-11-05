@@ -107,4 +107,22 @@ class MapViewModelTest {
         viewModel.undoLastDrawingPoint()
         assertEquals(1, viewModel.uiState.value.drawingPoints.size)
     }
+
+    @Test
+    fun `saveNewPark creates park with OPEN status`() {
+        val slot = io.mockk.slot<com.sonisoft.parkpulse.feature.parks.domain.model.Park>()
+        io.mockk.coEvery { parkRepository.savePark(capture(slot)) } returns Unit
+
+        viewModel.toggleDrawingMode()
+        viewModel.addDrawingPoint(GeoPoint(26.9000, 75.7000))
+        viewModel.addDrawingPoint(GeoPoint(26.9100, 75.7000))
+        viewModel.addDrawingPoint(GeoPoint(26.9100, 75.7100))
+
+        viewModel.saveNewPark("Central Park", com.sonisoft.parkpulse.feature.parks.domain.model.ParkType.GARDEN)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(slot.isCaptured)
+        assertEquals(com.sonisoft.parkpulse.feature.parks.domain.model.ParkStatus.OPEN, slot.captured.status)
+        assertEquals("Central Park", slot.captured.name)
+    }
 }
