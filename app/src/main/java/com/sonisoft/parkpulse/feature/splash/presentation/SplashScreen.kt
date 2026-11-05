@@ -100,7 +100,7 @@ fun SplashScreen(
         ) {
             // Lottie Animation
             Box(
-                modifier = Modifier.size(200.dp),
+                modifier = Modifier.size(400.dp),
                 contentAlignment = Alignment.Center
             ) {
                 if (composition != null) {
