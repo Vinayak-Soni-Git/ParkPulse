@@ -13,4 +13,5 @@ interface ParkRepository {
     fun getParkById(id: String): Flow<Park?>
     fun getDashboardStatistics(): Flow<DashboardStatistics>
     suspend fun initializeDatabaseIfNeeded()
+    suspend fun savePark(park: Park)
 }

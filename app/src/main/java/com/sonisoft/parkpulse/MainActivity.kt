@@ -14,6 +14,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -74,7 +75,22 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onParkClick = { parkId ->
                                     navController.navigate(Screen.Survey.createRoute(parkId))
+                                },
+                                onMapClick = {
+                                    navController.navigate(Screen.Map.route)
                                 }
+                            )
+                        }
+                        composable(Screen.Map.route) {
+                            com.sonisoft.parkpulse.feature.parks.presentation.map.MapScreen(
+                                onBackClick = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Screen.Survey.route) { backStackEntry ->
+                            val parkId = backStackEntry.arguments?.getString("parkId")
+                            Text(
+                                text = "Survey Screen for park: $parkId",
+                                modifier = Modifier.fillMaxSize().padding(16.dp)
                             )
                         }
                         // Other screens will be added here

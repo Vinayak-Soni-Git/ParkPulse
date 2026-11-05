@@ -65,4 +65,35 @@ class ParkRepositoryImpl @Inject constructor(
     override suspend fun initializeDatabaseIfNeeded() {
         parkSeedImporter.seedDatabaseIfNeeded()
     }
+
+    override suspend fun savePark(park: Park) {
+        val parkEntity = com.sonisoft.parkpulse.feature.parks.data.local.entity.ParkEntity(
+            id = park.id,
+            name = park.name,
+            type = park.type,
+            areaInSquareMeters = park.areaInSquareMeters,
+            perimeterInMeters = park.perimeterInMeters,
+            status = park.status,
+            lastSurveyDate = park.lastSurveyDate,
+            isPendingSync = park.isPendingSync,
+            boundaryQuality = park.boundaryQuality,
+            statusIsDemo = park.statusIsDemo,
+            sourceProvider = park.source?.provider,
+            sourceOsmType = park.source?.osmType,
+            sourceOsmId = park.source?.osmId,
+            sourceAttribution = park.source?.attribution,
+            sourceLicense = park.source?.license
+        )
+        
+        val pointEntities = park.boundaryPoints.mapIndexed { index, point ->
+            com.sonisoft.parkpulse.feature.parks.data.local.entity.ParkBoundaryPointEntity(
+                parkId = park.id,
+                latitude = point.latitude,
+                longitude = point.longitude,
+                pointIndex = index
+            )
+        }
+        
+        parkDao.insertParksWithBoundaries(listOf(parkEntity), pointEntities)
+    }
 }

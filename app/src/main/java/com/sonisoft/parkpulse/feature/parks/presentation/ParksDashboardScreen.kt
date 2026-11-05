@@ -64,6 +64,7 @@ import com.sonisoft.parkpulse.feature.parks.presentation.components.StatisticsRo
 fun ParksDashboardScreen(
     onLogout: () -> Unit,
     onParkClick: (String) -> Unit,
+    onMapClick: () -> Unit,
     viewModel: ParksViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -89,6 +90,13 @@ fun ParksDashboardScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onMapClick) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Rounded.Search,
+                            contentDescription = "Map View",
+                            tint = Charcoal
+                        )
+                    }
                     IconButton(onClick = {
                         viewModel.onLogoutClick()
                         onLogout()
