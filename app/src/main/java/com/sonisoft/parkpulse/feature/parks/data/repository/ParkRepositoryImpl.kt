@@ -2,12 +2,15 @@ package com.sonisoft.parkpulse.feature.parks.data.repository
 
 import com.sonisoft.parkpulse.feature.parks.data.local.dao.ParkDao
 import com.sonisoft.parkpulse.feature.parks.data.local.dao.SurveyDao
+import com.sonisoft.parkpulse.feature.parks.data.local.dao.SurveyPhotoDao
 import com.sonisoft.parkpulse.feature.parks.data.local.entity.SurveyEntity
+import com.sonisoft.parkpulse.feature.parks.data.local.entity.SurveyPhotoEntity
 import com.sonisoft.parkpulse.feature.parks.data.seed.ParkSeedImporter
 import com.sonisoft.parkpulse.feature.parks.domain.model.DashboardStatistics
 import com.sonisoft.parkpulse.feature.parks.domain.model.Park
 import com.sonisoft.parkpulse.feature.parks.domain.model.ParkStatus
 import com.sonisoft.parkpulse.feature.parks.domain.model.Survey
+import com.sonisoft.parkpulse.feature.parks.domain.model.SurveyPhoto
 import com.sonisoft.parkpulse.feature.parks.domain.repository.ParkRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -19,6 +22,7 @@ import javax.inject.Singleton
 class ParkRepositoryImpl @Inject constructor(
     private val parkDao: ParkDao,
     private val surveyDao: SurveyDao,
+    private val surveyPhotoDao: SurveyPhotoDao,
     private val parkSeedImporter: ParkSeedImporter
 ) : ParkRepository {
 
@@ -108,6 +112,26 @@ class ParkRepositoryImpl @Inject constructor(
 
     override fun getSurveysForPark(parkId: String): Flow<List<Survey>> {
         return surveyDao.getSurveysForPark(parkId).map { entities ->
+            entities.map { it.toDomainModel() }
+        }
+    }
+
+    override suspend fun saveSurveyPhoto(photo: SurveyPhoto) {
+        surveyPhotoDao.insertSurveyPhoto(SurveyPhotoEntity.fromDomainModel(photo))
+    }
+
+    override suspend fun saveSurveyPhotos(photos: List<SurveyPhoto>) {
+        surveyPhotoDao.insertSurveyPhotos(photos.map { SurveyPhotoEntity.fromDomainModel(it) })
+    }
+
+    override fun getPhotosForSurvey(surveyId: String): Flow<List<SurveyPhoto>> {
+        return surveyPhotoDao.getPhotosForSurvey(surveyId).map { entities ->
+            entities.map { it.toDomainModel() }
+        }
+    }
+
+    override fun getPhotosForPark(parkId: String): Flow<List<SurveyPhoto>> {
+        return surveyPhotoDao.getPhotosForPark(parkId).map { entities ->
             entities.map { it.toDomainModel() }
         }
     }

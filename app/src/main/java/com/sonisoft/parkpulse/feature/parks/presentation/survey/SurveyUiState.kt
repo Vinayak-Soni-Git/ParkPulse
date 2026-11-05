@@ -3,8 +3,10 @@ package com.sonisoft.parkpulse.feature.parks.presentation.survey
 import com.sonisoft.parkpulse.feature.parks.domain.model.CleanlinessRating
 import com.sonisoft.parkpulse.feature.parks.domain.model.Park
 import com.sonisoft.parkpulse.feature.parks.domain.model.Survey
+import com.sonisoft.parkpulse.feature.parks.domain.model.SurveyPhoto
 import com.sonisoft.parkpulse.feature.parks.domain.model.UserLocation
 import com.sonisoft.parkpulse.feature.parks.domain.usecase.ValidateCheckInUseCase
+import java.io.File
 
 enum class SurveyStep {
     CHECK_IN,
@@ -50,6 +52,14 @@ data class SurveyUiState(
     val cleanlinessError: String? = null,
     val notes: String = "",
 
+    // Camera & Survey Photos
+    val isCameraOpen: Boolean = false,
+    val isProcessingPhoto: Boolean = false,
+    val pendingWatermarkedPhotoFile: File? = null,
+    val attachedPhotos: List<SurveyPhoto> = emptyList(),
+    val selectedPhotoForViewer: SurveyPhoto? = null,
+
     // History
-    val pastSurveys: List<Survey> = emptyList()
+    val pastSurveys: List<Survey> = emptyList(),
+    val pastPhotos: List<SurveyPhoto> = emptyList()
 )

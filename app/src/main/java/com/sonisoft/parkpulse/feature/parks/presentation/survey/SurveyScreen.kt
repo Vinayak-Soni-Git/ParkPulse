@@ -4,9 +4,12 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,12 +18,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.BugReport
@@ -31,10 +34,6 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Park
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.Warning
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -58,25 +57,37 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.sonisoft.parkpulse.core.designsystem.theme.CardWhite
 import com.sonisoft.parkpulse.core.designsystem.theme.Charcoal
 import com.sonisoft.parkpulse.core.designsystem.theme.CharcoalLight
 import com.sonisoft.parkpulse.core.designsystem.theme.ErrorRed
 import com.sonisoft.parkpulse.core.designsystem.theme.ForestGreen
 import com.sonisoft.parkpulse.core.designsystem.theme.ForestGreenDark
-import com.sonisoft.parkpulse.core.designsystem.theme.LightGrey
 import com.sonisoft.parkpulse.core.designsystem.theme.OffWhite
 import com.sonisoft.parkpulse.feature.parks.domain.model.CleanlinessRating
 import com.sonisoft.parkpulse.feature.parks.domain.model.Survey
+import com.sonisoft.parkpulse.feature.parks.domain.model.SurveyPhoto
 import com.sonisoft.parkpulse.feature.parks.domain.usecase.ValidateCheckInUseCase
+import com.sonisoft.parkpulse.feature.parks.presentation.camera.CameraScreen
+import com.sonisoft.parkpulse.feature.parks.presentation.camera.PhotoPreviewDialog
+import com.sonisoft.parkpulse.feature.parks.presentation.survey.components.PhotoViewerDialog
+import com.sonisoft.parkpulse.feature.parks.presentation.survey.components.SurveyPhotoGallery
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -88,7 +99,6 @@ fun SurveyScreen(
     onBackClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -100,6 +110,33 @@ fun SurveyScreen(
 
     LaunchedEffect(Unit) {
         viewModel.checkLocationPermission()
+    }
+
+    if (uiState.isCameraOpen) {
+        CameraScreen(
+            park = uiState.park,
+            location = uiState.validatedLocation,
+            isProcessing = uiState.isProcessingPhoto,
+            onPhotoCaptured = { viewModel.onPhotoCaptured(it) },
+            onClose = { viewModel.closeCamera() }
+        )
+        return
+    }
+
+    uiState.pendingWatermarkedPhotoFile?.let { photoFile ->
+        PhotoPreviewDialog(
+            photoFile = photoFile,
+            onAcceptPhoto = { viewModel.acceptPendingPhoto() },
+            onRetakePhoto = { viewModel.retakePendingPhoto() },
+            onCancel = { viewModel.cancelPendingPhoto() }
+        )
+    }
+
+    uiState.selectedPhotoForViewer?.let { photo ->
+        PhotoViewerDialog(
+            photo = photo,
+            onDismiss = { viewModel.selectPhotoForViewer(null) }
+        )
     }
 
     Scaffold(
@@ -171,6 +208,9 @@ fun SurveyScreen(
                     onLightingSelected = { viewModel.onLightingSelected(it) },
                     onCleanlinessSelected = { viewModel.onCleanlinessSelected(it) },
                     onNotesChanged = { viewModel.onNotesChanged(it) },
+                    onOpenCamera = { viewModel.openCamera() },
+                    onPhotoClick = { viewModel.selectPhotoForViewer(it) },
+                    onRemovePhotoClick = { viewModel.removeAttachedPhoto(it) },
                     onProceedToReview = { viewModel.proceedToReview() },
                     onCancel = { viewModel.setStep(SurveyStep.CHECK_IN) }
                 )
@@ -178,6 +218,7 @@ fun SurveyScreen(
                 SurveyStep.REVIEW -> ReviewSummaryView(
                     uiState = uiState,
                     onBackToEdit = { viewModel.setStep(SurveyStep.FORM) },
+                    onPhotoClick = { viewModel.selectPhotoForViewer(it) },
                     onSubmit = { viewModel.saveSurvey() }
                 )
 
@@ -187,7 +228,9 @@ fun SurveyScreen(
                 )
 
                 SurveyStep.HISTORY -> HistoryView(
-                    surveys = uiState.pastSurveys
+                    surveys = uiState.pastSurveys,
+                    photos = uiState.pastPhotos,
+                    onPhotoClick = { viewModel.selectPhotoForViewer(it) }
                 )
             }
 
@@ -392,6 +435,9 @@ private fun InspectionFormView(
     onLightingSelected: (Boolean) -> Unit,
     onCleanlinessSelected: (CleanlinessRating) -> Unit,
     onNotesChanged: (String) -> Unit,
+    onOpenCamera: () -> Unit,
+    onPhotoClick: (SurveyPhoto) -> Unit,
+    onRemovePhotoClick: (SurveyPhoto) -> Unit,
     onProceedToReview: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -481,8 +527,20 @@ private fun InspectionFormView(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Survey Photos Gallery Section
+        Text("D. Survey Photos", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = Charcoal)
+        Spacer(modifier = Modifier.height(8.dp))
+        SurveyPhotoGallery(
+            photos = uiState.attachedPhotos,
+            onAddPhotoClick = onOpenCamera,
+            onPhotoClick = onPhotoClick,
+            onRemovePhotoClick = onRemovePhotoClick
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         // Notes Field
-        Text("D. Additional Notes (Optional)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = Charcoal)
+        Text("E. Additional Notes (Optional)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = Charcoal)
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = uiState.notes,
@@ -516,6 +574,7 @@ private fun InspectionFormView(
 private fun ReviewSummaryView(
     uiState: SurveyUiState,
     onBackToEdit: () -> Unit,
+    onPhotoClick: (SurveyPhoto) -> Unit,
     onSubmit: () -> Unit
 ) {
     Column(
@@ -542,10 +601,21 @@ private fun ReviewSummaryView(
                 ReviewRow("Trees Count", uiState.treeCountText)
                 ReviewRow("Lighting Available", if (uiState.hasLighting == true) "Yes" else "No")
                 ReviewRow("Cleanliness Rating", uiState.cleanliness?.name ?: "")
+                ReviewRow("Attached Photos", "${uiState.attachedPhotos.size} photo(s)")
                 if (uiState.notes.isNotBlank()) {
                     ReviewRow("Notes", uiState.notes)
                 }
             }
+        }
+
+        if (uiState.attachedPhotos.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            SurveyPhotoGallery(
+                photos = uiState.attachedPhotos,
+                onAddPhotoClick = {},
+                onPhotoClick = onPhotoClick,
+                onRemovePhotoClick = null
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -594,7 +664,7 @@ private fun SuccessView(
         Spacer(modifier = Modifier.height(16.dp))
         Text("Survey Submitted!", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Charcoal)
         Spacer(modifier = Modifier.height(8.dp))
-        Text("Your survey record has been saved locally to Room and marked for offline synchronization.", color = CharcoalLight, style = MaterialTheme.typography.bodyMedium)
+        Text("Your survey record and watermarked photos have been saved locally to Room and marked for offline synchronization.", color = CharcoalLight, style = MaterialTheme.typography.bodyMedium)
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -616,7 +686,11 @@ private fun SuccessView(
 }
 
 @Composable
-private fun HistoryView(surveys: List<Survey>) {
+private fun HistoryView(
+    surveys: List<Survey>,
+    photos: List<SurveyPhoto>,
+    onPhotoClick: (SurveyPhoto) -> Unit
+) {
     if (surveys.isEmpty()) {
         Column(
             modifier = Modifier.fillMaxSize().padding(32.dp),
@@ -637,6 +711,7 @@ private fun HistoryView(surveys: List<Survey>) {
                 .padding(16.dp)
         ) {
             surveys.forEach { survey ->
+                val surveyPhotos = photos.filter { it.surveyId == survey.id }
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -678,6 +753,25 @@ private fun HistoryView(surveys: List<Survey>) {
                         survey.notes?.let { notes ->
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("Notes: $notes", style = MaterialTheme.typography.bodySmall, color = Charcoal)
+                        }
+
+                        if (surveyPhotos.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text("Photos (${surveyPhotos.size}):", style = MaterialTheme.typography.labelSmall, color = CharcoalLight, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(surveyPhotos) { p ->
+                                    AsyncImage(
+                                        model = File(p.localFilePath),
+                                        contentDescription = "Survey Photo",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(60.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable { onPhotoClick(p) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }

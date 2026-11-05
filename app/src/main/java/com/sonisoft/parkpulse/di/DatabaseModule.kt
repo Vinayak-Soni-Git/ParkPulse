@@ -6,6 +6,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.sonisoft.parkpulse.feature.parks.data.local.dao.ParkDao
 import com.sonisoft.parkpulse.feature.parks.data.local.dao.SurveyDao
+import com.sonisoft.parkpulse.feature.parks.data.local.dao.SurveyPhotoDao
 import com.sonisoft.parkpulse.feature.parks.data.local.database.ParkDatabase
 import dagger.Module
 import dagger.Provides
@@ -43,6 +44,29 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS `survey_photos` (
+                    `id` TEXT NOT NULL,
+                    `surveyId` TEXT NOT NULL,
+                    `parkId` TEXT NOT NULL,
+                    `localFilePath` TEXT NOT NULL,
+                    `capturedAt` INTEGER NOT NULL,
+                    `latitude` REAL NOT NULL,
+                    `longitude` REAL NOT NULL,
+                    `accuracyMeters` REAL NOT NULL,
+                    `createdAt` INTEGER NOT NULL,
+                    `isPendingSync` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`surveyId`) REFERENCES `surveys`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+            """.trimIndent())
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_survey_photos_surveyId` ON `survey_photos` (`surveyId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_survey_photos_parkId` ON `survey_photos` (`parkId`)")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideParkDatabase(@ApplicationContext context: Context): ParkDatabase {
@@ -51,7 +75,7 @@ object DatabaseModule {
             ParkDatabase::class.java,
             "park_pulse_db"
         )
-        .addMigrations(MIGRATION_1_2)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
         .fallbackToDestructiveMigration()
         .build()
     }
@@ -64,5 +88,10 @@ object DatabaseModule {
     @Provides
     fun provideSurveyDao(database: ParkDatabase): SurveyDao {
         return database.surveyDao()
+    }
+
+    @Provides
+    fun provideSurveyPhotoDao(database: ParkDatabase): SurveyPhotoDao {
+        return database.surveyPhotoDao()
     }
 }

@@ -76,7 +76,8 @@ class SurveyViewModelSimulationTest {
             parkRepository,
             locationService,
             validateCheckInUseCase,
-            generateTestCoordinatesUseCase
+            generateTestCoordinatesUseCase,
+            mockk(relaxed = true)
         )
         testDispatcher.scheduler.advanceUntilIdle()
     }

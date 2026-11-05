@@ -73,7 +73,8 @@ class SurveyViewModelTest {
             parkRepository,
             locationService,
             validateCheckInUseCase,
-            GenerateTestCoordinatesUseCase(IsPointInPolygonUseCase())
+            GenerateTestCoordinatesUseCase(IsPointInPolygonUseCase()),
+            mockk(relaxed = true)
         )
     }
 

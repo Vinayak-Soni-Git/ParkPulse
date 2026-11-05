@@ -4,16 +4,20 @@ import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sonisoft.parkpulse.feature.parks.data.camera.WatermarkProcessor
 import com.sonisoft.parkpulse.feature.parks.domain.location.LocationService
 import com.sonisoft.parkpulse.feature.parks.domain.model.CleanlinessRating
 import com.sonisoft.parkpulse.feature.parks.domain.model.GeoPoint
 import com.sonisoft.parkpulse.feature.parks.domain.model.Survey
+import com.sonisoft.parkpulse.feature.parks.domain.model.SurveyPhoto
 import com.sonisoft.parkpulse.feature.parks.domain.model.UserLocation
 import com.sonisoft.parkpulse.feature.parks.domain.repository.ParkRepository
 import com.sonisoft.parkpulse.feature.parks.domain.usecase.GenerateTestCoordinatesUseCase
 import com.sonisoft.parkpulse.feature.parks.domain.usecase.ValidateCheckInUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.File
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +33,8 @@ class SurveyViewModel @Inject constructor(
     private val parkRepository: ParkRepository,
     private val locationService: LocationService,
     private val validateCheckInUseCase: ValidateCheckInUseCase,
-    private val generateTestCoordinatesUseCase: GenerateTestCoordinatesUseCase
+    private val generateTestCoordinatesUseCase: GenerateTestCoordinatesUseCase,
+    private val watermarkProcessor: WatermarkProcessor
 ) : ViewModel() {
 
     val parkId: String = checkNotNull(savedStateHandle["parkId"])
@@ -70,6 +75,12 @@ class SurveyViewModel @Inject constructor(
         viewModelScope.launch {
             parkRepository.getSurveysForPark(parkId).collectLatest { surveys ->
                 _uiState.update { it.copy(pastSurveys = surveys) }
+            }
+        }
+
+        viewModelScope.launch {
+            parkRepository.getPhotosForPark(parkId).collectLatest { photos ->
+                _uiState.update { it.copy(pastPhotos = photos) }
             }
         }
     }
@@ -309,8 +320,10 @@ class SurveyViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val now = System.currentTimeMillis()
+            val surveyId = UUID.randomUUID().toString()
+
             val survey = Survey(
-                id = UUID.randomUUID().toString(),
+                id = surveyId,
                 parkId = park.id,
                 checkInTimestamp = state.checkInTimestamp,
                 latitude = loc.latitude,
@@ -325,7 +338,13 @@ class SurveyViewModel @Inject constructor(
                 isPendingSync = true
             )
 
+            val photosToSave = state.attachedPhotos.map { it.copy(surveyId = surveyId) }
+
             parkRepository.saveSurvey(survey)
+            if (photosToSave.isNotEmpty()) {
+                parkRepository.saveSurveyPhotos(photosToSave)
+            }
+
             _uiState.update {
                 it.copy(
                     isLoading = false,
@@ -333,6 +352,131 @@ class SurveyViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    // CAMERA & PHOTO METHODS
+    fun openCamera() {
+        val state = _uiState.value
+        val loc = state.validatedLocation
+
+        if (state.isSimulationActive || loc?.isSimulated == true) {
+            _uiState.update {
+                it.copy(error = "Photo capture requires a genuine field survey check-in. Simulated locations cannot be used.")
+            }
+            return
+        }
+
+        if (loc == null) {
+            _uiState.update {
+                it.copy(error = "Please complete geofence check-in before capturing photos.")
+            }
+            return
+        }
+
+        _uiState.update { it.copy(isCameraOpen = true, error = null) }
+    }
+
+    fun closeCamera() {
+        _uiState.update { it.copy(isCameraOpen = false) }
+    }
+
+    fun onPhotoCaptured(tempFile: File) {
+        val state = _uiState.value
+        val loc = state.validatedLocation ?: return
+        val park = state.park ?: return
+
+        _uiState.update { it.copy(isProcessingPhoto = true) }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val metadata = WatermarkProcessor.WatermarkMetadata(
+                    parkName = park.name,
+                    latitude = loc.latitude,
+                    longitude = loc.longitude,
+                    accuracyMeters = loc.accuracyMeters,
+                    capturedAt = System.currentTimeMillis()
+                )
+
+                val processedFile = watermarkProcessor.processAndSaveWatermarkedPhoto(tempFile, metadata)
+
+                _uiState.update {
+                    it.copy(
+                        isProcessingPhoto = false,
+                        isCameraOpen = false,
+                        pendingWatermarkedPhotoFile = processedFile
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _uiState.update {
+                    it.copy(
+                        isProcessingPhoto = false,
+                        error = "Failed to process photo watermark: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun acceptPendingPhoto() {
+        val state = _uiState.value
+        val pendingFile = state.pendingWatermarkedPhotoFile ?: return
+        val loc = state.validatedLocation ?: return
+        val park = state.park ?: return
+
+        val photo = SurveyPhoto(
+            id = UUID.randomUUID().toString(),
+            surveyId = "", // Updated upon survey submission
+            parkId = park.id,
+            localFilePath = pendingFile.absolutePath,
+            capturedAt = System.currentTimeMillis(),
+            latitude = loc.latitude,
+            longitude = loc.longitude,
+            accuracyMeters = loc.accuracyMeters,
+            createdAt = System.currentTimeMillis(),
+            isPendingSync = true
+        )
+
+        _uiState.update {
+            it.copy(
+                attachedPhotos = it.attachedPhotos + photo,
+                pendingWatermarkedPhotoFile = null
+            )
+        }
+    }
+
+    fun retakePendingPhoto() {
+        val file = _uiState.value.pendingWatermarkedPhotoFile
+        if (file?.exists() == true) {
+            file.delete()
+        }
+        _uiState.update {
+            it.copy(pendingWatermarkedPhotoFile = null, isCameraOpen = true)
+        }
+    }
+
+    fun cancelPendingPhoto() {
+        val file = _uiState.value.pendingWatermarkedPhotoFile
+        if (file?.exists() == true) {
+            file.delete()
+        }
+        _uiState.update {
+            it.copy(pendingWatermarkedPhotoFile = null)
+        }
+    }
+
+    fun removeAttachedPhoto(photo: SurveyPhoto) {
+        val file = File(photo.localFilePath)
+        if (file.exists()) {
+            file.delete()
+        }
+        _uiState.update {
+            it.copy(attachedPhotos = it.attachedPhotos.filter { p -> p.id != photo.id })
+        }
+    }
+
+    fun selectPhotoForViewer(photo: SurveyPhoto?) {
+        _uiState.update { it.copy(selectedPhotoForViewer = photo) }
     }
 
     fun setStep(step: SurveyStep) {
