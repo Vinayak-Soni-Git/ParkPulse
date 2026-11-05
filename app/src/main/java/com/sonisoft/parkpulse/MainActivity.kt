@@ -66,12 +66,14 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable(Screen.Dashboard.route) {
-                            com.sonisoft.parkpulse.feature.dashboard.presentation.DashboardScreen(
-                                mainViewModel = mainViewModel,
-                                onLogoutSuccess = {
+                            com.sonisoft.parkpulse.feature.parks.presentation.ParksDashboardScreen(
+                                onLogout = {
                                     navController.navigate(Screen.Login.route) {
                                         popUpTo(Screen.Dashboard.route) { inclusive = true }
                                     }
+                                },
+                                onParkClick = { parkId ->
+                                    navController.navigate(Screen.Survey.createRoute(parkId))
                                 }
                             )
                         }
