@@ -14,4 +14,6 @@ sealed class Screen(val route: String) {
     data object Camera : Screen("camera/{parkId}") {
         fun createRoute(parkId: String) = "camera/$parkId"
     }
+
+    data object DebugCameraTest : Screen("debug_camera_test")
 }

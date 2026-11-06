@@ -78,6 +78,9 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onMapClick = {
                                     navController.navigate(Screen.Map.route)
+                                },
+                                onDebugCameraClick = {
+                                    navController.navigate(Screen.DebugCameraTest.route)
                                 }
                             )
                         }
@@ -91,6 +94,11 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(Screen.Survey.route) {
                             com.sonisoft.parkpulse.feature.parks.presentation.survey.SurveyScreen(
+                                onBackClick = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Screen.DebugCameraTest.route) {
+                            com.sonisoft.parkpulse.feature.parks.presentation.camera.DebugCameraTestScreen(
                                 onBackClick = { navController.popBackStack() }
                             )
                         }

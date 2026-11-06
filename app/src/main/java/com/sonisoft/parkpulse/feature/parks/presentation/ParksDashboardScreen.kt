@@ -65,6 +65,7 @@ fun ParksDashboardScreen(
     onLogout: () -> Unit,
     onParkClick: (String) -> Unit,
     onMapClick: () -> Unit,
+    onDebugCameraClick: () -> Unit = {},
     viewModel: ParksViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -90,6 +91,15 @@ fun ParksDashboardScreen(
                     }
                 },
                 actions = {
+                    if (com.sonisoft.parkpulse.BuildConfig.DEBUG) {
+                        IconButton(onClick = onDebugCameraClick) {
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Rounded.Search, // Just reusing a known icon
+                                contentDescription = "Camera Test",
+                                tint = Charcoal
+                            )
+                        }
+                    }
                     IconButton(onClick = onMapClick) {
                         Icon(
                             imageVector = androidx.compose.material.icons.Icons.Rounded.Search,
