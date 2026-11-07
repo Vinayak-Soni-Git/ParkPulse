@@ -145,4 +145,24 @@ class SyncManagerTest {
         assertEquals(0, syncManager.syncState.value.successful)
         assertEquals(3, syncManager.syncState.value.failed)
     }
+
+    @Test
+    fun `syncNow detects version conflict on park edit`() = runTest(testDispatcher) {
+        val conflictPark = samplePark.copy(id = "conflict_park", baseServerVersion = 2, serverVersion = 2)
+        coEvery { syncRepository.getPendingParks() } returns listOf(conflictPark)
+        coEvery { syncRepository.getPendingSurveys() } returns emptyList()
+        coEvery { syncRepository.getPendingPhotos() } returns emptyList()
+
+        // Simulate conflict from repository/api
+        coEvery { syncRepository.uploadPark(any()) } answers {
+            val p = firstArg<Park>()
+            if (p.id == "conflict_park") false else true
+        }
+
+        syncManager.syncNow()
+
+        coVerify(exactly = 1) { syncRepository.uploadPark(conflictPark) }
+        assertEquals(0, syncManager.syncState.value.successful)
+        assertEquals(1, syncManager.syncState.value.failed)
+    }
 }

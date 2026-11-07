@@ -89,7 +89,8 @@ class SurveyPhotoViewModelTest {
             locationService,
             validateCheckInUseCase,
             generateTestCoordinatesUseCase,
-            watermarkProcessor
+            watermarkProcessor,
+            mockk(relaxed = true)
         )
         testDispatcher.scheduler.advanceUntilIdle()
     }

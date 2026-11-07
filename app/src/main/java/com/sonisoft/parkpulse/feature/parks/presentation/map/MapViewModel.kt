@@ -8,6 +8,9 @@ import com.sonisoft.parkpulse.feature.parks.domain.model.Park
 import com.sonisoft.parkpulse.feature.parks.domain.usecase.CalculateDistanceAndBearingUseCase
 import com.sonisoft.parkpulse.feature.parks.domain.usecase.CalculateAreaAndPerimeterUseCase
 import com.sonisoft.parkpulse.feature.parks.domain.usecase.GetAllParksUseCase
+import com.sonisoft.parkpulse.feature.parks.domain.usecase.ValidatePolygonUseCase
+import com.sonisoft.parkpulse.feature.parks.domain.usecase.ExportParkGeoJsonUseCase
+import com.sonisoft.parkpulse.feature.parks.domain.usecase.ScheduleSyncUseCase
 import com.sonisoft.parkpulse.feature.parks.domain.repository.ParkRepository
 import com.sonisoft.parkpulse.feature.parks.domain.model.ParkType
 import com.sonisoft.parkpulse.feature.parks.domain.model.ParkStatus
@@ -19,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -29,7 +33,10 @@ class MapViewModel @Inject constructor(
     private val parkRepository: ParkRepository,
     private val locationService: LocationService,
     private val calculateDistanceAndBearingUseCase: CalculateDistanceAndBearingUseCase,
-    private val calculateAreaAndPerimeterUseCase: CalculateAreaAndPerimeterUseCase
+    private val calculateAreaAndPerimeterUseCase: CalculateAreaAndPerimeterUseCase,
+    private val validatePolygonUseCase: ValidatePolygonUseCase,
+    private val exportParkGeoJsonUseCase: ExportParkGeoJsonUseCase,
+    private val scheduleSyncUseCase: ScheduleSyncUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MapUiState())
@@ -75,7 +82,7 @@ class MapViewModel @Inject constructor(
     private fun startLocationUpdates() {
         locationJob?.cancel()
         locationJob = viewModelScope.launch {
-            locationService.requestLocationUpdates().collectLatest { location ->
+            locationService.requestDetailedLocationUpdates().collectLatest { location ->
                 _uiState.update { state ->
                     val distanceAndBearing = state.selectedPark?.let { park ->
                         calculateDistanceToPark(location, park)
@@ -86,6 +93,21 @@ class MapViewModel @Inject constructor(
                         distanceToSelectedPark = distanceAndBearing?.distanceInMeters,
                         bearingToSelectedPark = distanceAndBearing?.compassDirection
                     )
+                }
+                
+                // Bonus 3: Walk mode updates
+                location?.let {
+                    val state = _uiState.value
+                    if (state.isDrawingMode && state.isWalkMode && state.isWalking) {
+                        if (it.accuracyMeters <= 20f) {
+                            val newPoint = GeoPoint(it.latitude, it.longitude)
+                            // Prevent extremely close duplicate points (e.g. < 2 meters distance approx)
+                            val last = state.drawingPoints.lastOrNull()
+                            if (last == null || calculateDistanceAndBearingUseCase(last, newPoint).distanceInMeters > 2.0) {
+                                updateDrawingPoints(state.drawingPoints + newPoint)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -105,29 +127,63 @@ class MapViewModel @Inject constructor(
     }
 
     private fun calculateDistanceToPark(
-        userLocation: GeoPoint?,
+        userLocation: com.sonisoft.parkpulse.feature.parks.domain.model.UserLocation?,
         park: Park
     ): CalculateDistanceAndBearingUseCase.Result? {
         if (userLocation == null || park.boundaryPoints.isEmpty()) return null
 
+        val userGeo = GeoPoint(userLocation.latitude, userLocation.longitude)
         // Use centroid or first point for distance calculation
         val centerLat = park.boundaryPoints.map { it.latitude }.average()
         val centerLon = park.boundaryPoints.map { it.longitude }.average()
         val parkCenter = GeoPoint(centerLat, centerLon)
 
-        return calculateDistanceAndBearingUseCase(userLocation, parkCenter)
+        return calculateDistanceAndBearingUseCase(userGeo, parkCenter)
     }
 
     // Phase 4: Drawing Mode Methods
-    fun toggleDrawingMode() {
+    fun toggleDrawingMode(parkToEdit: Park? = null) {
+        val initialPoints = parkToEdit?.boundaryPoints ?: emptyList()
+        val measurements = if (initialPoints.size >= 3) {
+            calculateAreaAndPerimeterUseCase(initialPoints)
+        } else null
+
         _uiState.update { 
             it.copy(
                 isDrawingMode = !it.isDrawingMode,
-                drawingPoints = emptyList(),
-                drawingArea = 0.0,
-                drawingPerimeter = 0.0,
+                drawingPoints = initialPoints,
+                drawingArea = measurements?.areaInSquareMeters ?: 0.0,
+                drawingPerimeter = measurements?.perimeterInMeters ?: 0.0,
+                drawingError = null,
+                isWalkMode = false,
+                isWalking = false,
                 showCreateParkForm = false,
+                editingParkId = parkToEdit?.id,
                 selectedPark = if (it.isDrawingMode) it.selectedPark else null // Deselect if entering
+            )
+        }
+    }
+
+    fun toggleWalkMode() {
+        _uiState.update { 
+            it.copy(
+                isWalkMode = true,
+                isWalking = false
+            )
+        }
+    }
+
+    fun toggleWalking() {
+        _uiState.update { 
+            it.copy(isWalking = !it.isWalking)
+        }
+    }
+
+    fun setManualMode() {
+        _uiState.update { 
+            it.copy(
+                isWalkMode = false,
+                isWalking = false
             )
         }
     }
@@ -169,11 +225,15 @@ class MapViewModel @Inject constructor(
 
     private fun updateDrawingPoints(newPoints: List<GeoPoint>) {
         val measurements = calculateAreaAndPerimeterUseCase(newPoints)
+        val validationResult = validatePolygonUseCase(newPoints)
+        val error = if (validationResult is ValidatePolygonUseCase.Result.Invalid) validationResult.reason else null
+        
         _uiState.update {
             it.copy(
                 drawingPoints = newPoints,
                 drawingArea = measurements.areaInSquareMeters,
-                drawingPerimeter = measurements.perimeterInMeters
+                drawingPerimeter = measurements.perimeterInMeters,
+                drawingError = error
             )
         }
     }
@@ -186,10 +246,27 @@ class MapViewModel @Inject constructor(
         val state = _uiState.value
         if (state.drawingPoints.size < 3) return
         if (name.isBlank()) return
+        if (state.drawingError != null) return
         
         viewModelScope.launch {
-            val newPark = Park(
-                id = UUID.randomUUID().toString(),
+            val now = System.currentTimeMillis()
+            val editingId = state.editingParkId
+            
+            val baseServerVer = if (editingId != null) {
+                // If editing, preserve the server version as the base
+                val existingPark = parkRepository.getParkById(editingId).first()
+                existingPark?.serverVersion ?: 0
+            } else {
+                0
+            }
+            
+            val existingRemoteId = if (editingId != null) {
+                val existingPark = parkRepository.getParkById(editingId).first()
+                existingPark?.remoteId
+            } else null
+
+            val parkToSave = Park(
+                id = editingId ?: UUID.randomUUID().toString(),
                 name = name,
                 type = type,
                 areaInSquareMeters = state.drawingArea,
@@ -198,15 +275,32 @@ class MapViewModel @Inject constructor(
                 lastSurveyDate = null,
                 isPendingSync = true,
                 boundaryPoints = state.drawingPoints,
-                boundaryQuality = BoundaryQuality.VERIFIED, // It's manually drawn by user
+                boundaryQuality = BoundaryQuality.VERIFIED,
                 statusIsDemo = false,
                 source = null,
                 syncStatus = com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.PENDING,
-                remoteId = null
+                remoteId = existingRemoteId,
+                serverVersion = baseServerVer,
+                baseServerVersion = baseServerVer,
+                localModifiedAt = now
             )
             
-            parkRepository.savePark(newPark)
+            parkRepository.savePark(parkToSave)
+            scheduleSyncUseCase()
             toggleDrawingMode() // Closes mode and clears points
         }
+    }
+
+    fun exportParkGeoJson(park: Park, context: android.content.Context) {
+        val uri = exportParkGeoJsonUseCase.invoke(park)
+        
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "application/geo+json"
+            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        
+        val chooser = android.content.Intent.createChooser(intent, "Export GeoJSON")
+        context.startActivity(chooser)
     }
 }

@@ -4,7 +4,8 @@ enum class SyncStatus {
     PENDING,
     SYNCING,
     SYNCED,
-    FAILED;
+    FAILED,
+    CONFLICT;
 
     companion object {
         fun fromString(value: String?): SyncStatus {

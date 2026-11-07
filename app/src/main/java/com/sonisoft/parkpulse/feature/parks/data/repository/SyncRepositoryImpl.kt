@@ -31,15 +31,22 @@ class SyncRepositoryImpl @Inject constructor(
     }
 
     override suspend fun uploadPark(park: Park): Boolean {
-        parkRepository.updateParkSyncStatus(park.id, SyncStatus.SYNCING, park.remoteId)
+        parkRepository.updateParkSyncStatus(park.id, SyncStatus.SYNCING, park.remoteId, park.serverVersion)
         val result = syncApi.uploadPark(park)
 
-        return if (result is SyncResult.Success) {
-            parkRepository.updateParkSyncStatus(park.id, SyncStatus.SYNCED, result.remoteId)
-            true
-        } else {
-            parkRepository.updateParkSyncStatus(park.id, SyncStatus.FAILED, park.remoteId)
-            false
+        return when (result) {
+            is SyncResult.Success -> {
+                parkRepository.updateParkSyncStatus(park.id, SyncStatus.SYNCED, result.remoteId, result.serverVersion)
+                true
+            }
+            is SyncResult.Conflict -> {
+                parkRepository.updateParkSyncStatus(park.id, SyncStatus.CONFLICT, park.remoteId, park.serverVersion)
+                false
+            }
+            is SyncResult.Error -> {
+                parkRepository.updateParkSyncStatus(park.id, SyncStatus.FAILED, park.remoteId, park.serverVersion)
+                false
+            }
         }
     }
 

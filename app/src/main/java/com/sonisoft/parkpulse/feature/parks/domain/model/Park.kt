@@ -14,5 +14,8 @@ data class Park(
     val statusIsDemo: Boolean,
     val source: ParkSource?,
     val syncStatus: SyncStatus = SyncStatus.PENDING,
-    val remoteId: String? = null
+    val remoteId: String? = null,
+    val serverVersion: Int = 0,
+    val baseServerVersion: Int = 0,
+    val localModifiedAt: Long = 0
 )

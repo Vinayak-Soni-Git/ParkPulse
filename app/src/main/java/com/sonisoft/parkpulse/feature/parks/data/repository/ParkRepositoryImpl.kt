@@ -92,7 +92,10 @@ class ParkRepositoryImpl @Inject constructor(
             sourceAttribution = park.source?.attribution,
             sourceLicense = park.source?.license,
             syncStatus = park.syncStatus.name,
-            remoteId = park.remoteId
+            remoteId = park.remoteId,
+            serverVersion = park.serverVersion,
+            baseServerVersion = park.baseServerVersion,
+            localModifiedAt = park.localModifiedAt
         )
         
         val pointEntities = park.boundaryPoints.mapIndexed { index, point ->
@@ -144,8 +147,8 @@ class ParkRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun updateParkSyncStatus(parkId: String, syncStatus: com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus, remoteId: String?) {
-        parkDao.updateParkSyncStatus(parkId, syncStatus.name, remoteId)
+    override suspend fun updateParkSyncStatus(parkId: String, syncStatus: com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus, remoteId: String?, serverVersion: Int) {
+        parkDao.updateParkSyncStatus(parkId, syncStatus.name, remoteId, serverVersion)
     }
 
     override fun getUnsyncedSurveys(): Flow<List<Survey>> {

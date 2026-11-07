@@ -40,8 +40,8 @@ interface ParkDao {
     @Query("UPDATE parks SET lastSurveyDate = :lastSurveyDate WHERE id = :parkId")
     suspend fun updateParkLastSurveyDate(parkId: String, lastSurveyDate: Long)
     
-    @Query("UPDATE parks SET syncStatus = :syncStatus, remoteId = :remoteId WHERE id = :parkId")
-    suspend fun updateParkSyncStatus(parkId: String, syncStatus: String, remoteId: String?)
+    @Query("UPDATE parks SET syncStatus = :syncStatus, remoteId = :remoteId, serverVersion = :serverVersion WHERE id = :parkId")
+    suspend fun updateParkSyncStatus(parkId: String, syncStatus: String, remoteId: String?, serverVersion: Int)
 
     @Query("SELECT * FROM parks WHERE syncStatus = 'PENDING' OR syncStatus = 'FAILED'")
     fun getUnsyncedParks(): Flow<List<ParkWithBoundaryPoints>>

@@ -736,12 +736,14 @@ private fun HistoryView(
                                     com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.PENDING -> Icons.Rounded.CloudOff
                                     com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.SYNCING -> Icons.Rounded.CloudUpload
                                     com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.FAILED -> Icons.Rounded.ErrorOutline
+                                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.CONFLICT -> Icons.Rounded.Warning
                                 }
                                 val syncColor = when (survey.syncStatus) {
                                     com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.SYNCED -> ForestGreen
                                     com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.PENDING -> CharcoalLight
                                     com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.SYNCING -> Charcoal
                                     com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.FAILED -> ErrorRed
+                                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.CONFLICT -> ErrorRed
                                 }
 
                                 Icon(

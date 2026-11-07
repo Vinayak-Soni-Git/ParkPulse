@@ -13,6 +13,7 @@ import com.sonisoft.parkpulse.feature.parks.domain.model.SurveyPhoto
 import com.sonisoft.parkpulse.feature.parks.domain.model.UserLocation
 import com.sonisoft.parkpulse.feature.parks.domain.repository.ParkRepository
 import com.sonisoft.parkpulse.feature.parks.domain.usecase.GenerateTestCoordinatesUseCase
+import com.sonisoft.parkpulse.feature.parks.domain.usecase.ScheduleSyncUseCase
 import com.sonisoft.parkpulse.feature.parks.domain.usecase.ValidateCheckInUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
@@ -34,7 +35,8 @@ class SurveyViewModel @Inject constructor(
     private val locationService: LocationService,
     private val validateCheckInUseCase: ValidateCheckInUseCase,
     private val generateTestCoordinatesUseCase: GenerateTestCoordinatesUseCase,
-    private val watermarkProcessor: WatermarkProcessor
+    private val watermarkProcessor: WatermarkProcessor,
+    private val scheduleSyncUseCase: ScheduleSyncUseCase
 ) : ViewModel() {
 
     val parkId: String = checkNotNull(savedStateHandle["parkId"])
@@ -346,6 +348,8 @@ class SurveyViewModel @Inject constructor(
             if (photosToSave.isNotEmpty()) {
                 parkRepository.saveSurveyPhotos(photosToSave)
             }
+            
+            scheduleSyncUseCase()
 
             _uiState.update {
                 it.copy(

@@ -61,8 +61,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.sonisoft.parkpulse.core.designsystem.theme.CardWhite
 import com.sonisoft.parkpulse.core.designsystem.theme.Charcoal
 import com.sonisoft.parkpulse.core.designsystem.theme.CharcoalLight
+import com.sonisoft.parkpulse.core.designsystem.theme.ErrorRed
 import com.sonisoft.parkpulse.core.designsystem.theme.ForestGreen
 import com.sonisoft.parkpulse.core.designsystem.theme.ForestGreenDark
+import com.sonisoft.parkpulse.core.designsystem.theme.OffWhite
 import com.sonisoft.parkpulse.core.designsystem.theme.LightGrey
 import com.sonisoft.parkpulse.feature.parks.domain.model.GeoPoint
 import com.sonisoft.parkpulse.feature.parks.domain.model.Park
@@ -150,7 +152,7 @@ fun MapScreen(
             OsmMapView(
                 parks = uiState.parks,
                 selectedPark = uiState.selectedPark,
-                userLocation = uiState.userLocation,
+                userLocation = uiState.userLocation?.let { com.sonisoft.parkpulse.feature.parks.domain.model.GeoPoint(it.latitude, it.longitude) },
                 hasLocationPermission = uiState.hasLocationPermission,
                 onParkClick = { viewModel.selectPark(it) },
                 isDrawingMode = uiState.isDrawingMode,
@@ -169,7 +171,9 @@ fun MapScreen(
                     distance = uiState.distanceToSelectedPark,
                     bearing = uiState.bearingToSelectedPark,
                     onDismiss = { viewModel.selectPark(null) },
-                    onStartSurvey = onStartSurvey
+                    onStartSurvey = onStartSurvey,
+                    onEditPark = { viewModel.toggleDrawingMode(it) },
+                    onExportGeoJson = { viewModel.exportParkGeoJson(it, context) }
                 )
             }
             
@@ -178,18 +182,33 @@ fun MapScreen(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     drawingPointsCount = uiState.drawingPoints.size,
                     drawingArea = uiState.drawingArea,
+                    isWalkMode = uiState.isWalkMode,
+                    isWalking = uiState.isWalking,
                     onUndo = { viewModel.undoLastDrawingPoint() },
                     onClear = { viewModel.clearDrawing() },
                     onCancel = { viewModel.toggleDrawingMode() },
-                    onFinish = { viewModel.setShowCreateParkForm(true) }
+                    onFinish = { viewModel.setShowCreateParkForm(true) },
+                    onToggleWalkMode = { viewModel.toggleWalkMode() },
+                    onToggleWalking = { viewModel.toggleWalking() },
+                    onSetManualMode = { viewModel.setManualMode() }
                 )
             }
 
             if (uiState.showCreateParkForm) {
+                val initialName = if (uiState.editingParkId != null) {
+                    uiState.parks.find { it.id == uiState.editingParkId }?.name ?: ""
+                } else ""
+                val initialType = if (uiState.editingParkId != null) {
+                    uiState.parks.find { it.id == uiState.editingParkId }?.type ?: com.sonisoft.parkpulse.feature.parks.domain.model.ParkType.GARDEN
+                } else com.sonisoft.parkpulse.feature.parks.domain.model.ParkType.GARDEN
+                
                 CreateParkBottomSheet(
+                    initialName = initialName,
+                    initialType = initialType,
                     areaInSquareMeters = uiState.drawingArea,
                     perimeterInMeters = uiState.drawingPerimeter,
                     pointsCount = uiState.drawingPoints.size,
+                    drawingError = uiState.drawingError,
                     onDismiss = { viewModel.setShowCreateParkForm(false) },
                     onSave = { name, type -> viewModel.saveNewPark(name, type) }
                 )
@@ -344,10 +363,15 @@ private fun DrawingControls(
     modifier: Modifier = Modifier,
     drawingPointsCount: Int,
     drawingArea: Double,
+    isWalkMode: Boolean,
+    isWalking: Boolean,
     onUndo: () -> Unit,
     onClear: () -> Unit,
     onCancel: () -> Unit,
-    onFinish: () -> Unit
+    onFinish: () -> Unit,
+    onToggleWalkMode: () -> Unit,
+    onToggleWalking: () -> Unit,
+    onSetManualMode: () -> Unit
 ) {
     Surface(
         modifier = modifier
@@ -393,6 +417,37 @@ private fun DrawingControls(
                             color = ForestGreenDark,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                androidx.compose.material3.FilterChip(
+                    selected = !isWalkMode,
+                    onClick = onSetManualMode,
+                    label = { Text("Manual Draw") },
+                    colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(selectedContainerColor = ForestGreen, selectedLabelColor = OffWhite)
+                )
+                androidx.compose.material3.FilterChip(
+                    selected = isWalkMode,
+                    onClick = onToggleWalkMode,
+                    label = { Text("Walk Mode") },
+                    colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(selectedContainerColor = ForestGreen, selectedLabelColor = OffWhite)
+                )
+            }
+            
+            if (isWalkMode) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Walk the boundary to collect points", color = CharcoalLight, style = MaterialTheme.typography.bodySmall)
+                    Button(
+                        onClick = onToggleWalking,
+                        colors = ButtonDefaults.buttonColors(containerColor = if (isWalking) ErrorRed else ForestGreen),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(if (isWalking) "Pause" else "Start", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }

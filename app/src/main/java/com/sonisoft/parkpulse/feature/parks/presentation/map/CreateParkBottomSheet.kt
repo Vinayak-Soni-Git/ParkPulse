@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -44,16 +46,19 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun CreateParkBottomSheet(
+    initialName: String = "",
+    initialType: ParkType = ParkType.GARDEN,
     areaInSquareMeters: Double,
     perimeterInMeters: Double,
     pointsCount: Int,
+    drawingError: String? = null,
     onDismiss: () -> Unit,
     onSave: (String, ParkType) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    var name by remember { mutableStateOf("") }
-    var selectedType by remember { mutableStateOf(ParkType.GARDEN) }
+    var name by remember { mutableStateOf(initialName) }
+    var selectedType by remember { mutableStateOf(initialType) }
     var nameError by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
@@ -195,6 +200,26 @@ fun CreateParkBottomSheet(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Save / Cancel Buttons
+            if (drawingError != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = com.sonisoft.parkpulse.core.designsystem.theme.ErrorRed.copy(alpha = 0.15f)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.Icon(Icons.Rounded.ErrorOutline, contentDescription = "Error", tint = com.sonisoft.parkpulse.core.designsystem.theme.ErrorRed)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = drawingError,
+                            color = com.sonisoft.parkpulse.core.designsystem.theme.ErrorRed,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -211,10 +236,11 @@ fun CreateParkBottomSheet(
                     onClick = {
                         if (name.isBlank()) {
                             nameError = true
-                        } else {
+                        } else if (drawingError == null) {
                             onSave(name, selectedType)
                         }
                     },
+                    enabled = pointsCount >= 3 && drawingError == null,
                     colors = ButtonDefaults.buttonColors(containerColor = ForestGreen),
                     modifier = Modifier.weight(1f)
                 ) {

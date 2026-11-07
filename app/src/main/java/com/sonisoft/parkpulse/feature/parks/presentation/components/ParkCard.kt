@@ -157,12 +157,14 @@ fun ParkCard(
                     com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.PENDING -> Icons.Rounded.CloudOff
                     com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.SYNCING -> Icons.Rounded.CloudUpload
                     com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.FAILED -> Icons.Rounded.ErrorOutline
+                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.CONFLICT -> Icons.Rounded.WarningAmber
                 }
                 val syncColor = when (park.syncStatus) {
                     com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.SYNCED -> ForestGreen
                     com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.PENDING -> CharcoalLight
                     com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.SYNCING -> Charcoal
                     com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.FAILED -> ErrorRed
+                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.CONFLICT -> ErrorRed
                 }
 
                 Icon(
@@ -172,8 +174,9 @@ fun ParkCard(
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
+                val syncText = if (park.syncStatus == com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.CONFLICT) "Conflict" else park.syncStatus.name.lowercase().replaceFirstChar { it.titlecase() }
                 Text(
-                    text = park.syncStatus.name.lowercase().replaceFirstChar { it.titlecase() },
+                    text = syncText,
                     style = MaterialTheme.typography.labelSmall,
                     color = syncColor,
                     fontSize = 10.sp

@@ -29,7 +29,9 @@ fun ParkDetailsBottomSheet(
     distance: Float?,
     bearing: String?,
     onDismiss: () -> Unit,
-    onStartSurvey: (String) -> Unit
+    onStartSurvey: (String) -> Unit,
+    onEditPark: (Park) -> Unit,
+    onExportGeoJson: (Park) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -221,19 +223,48 @@ fun ParkDetailsBottomSheet(
             }
 
             Spacer(modifier = Modifier.height(20.dp))
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = {
+                        onDismiss()
+                        onEditPark(park)
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Rounded.Edit, contentDescription = null, tint = ForestGreen)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Edit Park", fontWeight = FontWeight.Bold, color = ForestGreen)
+                }
 
-            Button(
+                Button(
+                    onClick = {
+                        onDismiss()
+                        onStartSurvey(park.id)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ForestGreen),
+                    modifier = Modifier.weight(1.5f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.AutoMirrored.Rounded.Assignment, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Start Survey", fontWeight = FontWeight.Bold)
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedButton(
                 onClick = {
                     onDismiss()
-                    onStartSurvey(park.id)
+                    onExportGeoJson(park)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = ForestGreen),
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.AutoMirrored.Rounded.Assignment, contentDescription = null)
+                Icon(Icons.Rounded.Share, contentDescription = null, tint = Charcoal)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Start Survey / History", fontWeight = FontWeight.Bold)
+                Text("Export as GeoJSON", fontWeight = FontWeight.Bold, color = Charcoal)
             }
         }
     }

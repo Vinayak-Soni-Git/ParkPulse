@@ -25,7 +25,7 @@ interface ParkRepository {
     
     // Sync related
     fun getUnsyncedParks(): Flow<List<Park>>
-    suspend fun updateParkSyncStatus(parkId: String, syncStatus: com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus, remoteId: String?)
+    suspend fun updateParkSyncStatus(parkId: String, syncStatus: com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus, remoteId: String?, serverVersion: Int)
     fun getUnsyncedSurveys(): Flow<List<Survey>>
     suspend fun updateSurveySyncStatus(surveyId: String, syncStatus: com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus, remoteId: String?)
     fun getUnsyncedPhotos(): Flow<List<SurveyPhoto>>

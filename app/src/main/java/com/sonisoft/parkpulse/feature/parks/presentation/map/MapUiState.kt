@@ -8,15 +8,19 @@ data class MapUiState(
     val parks: List<Park> = emptyList(),
     val error: String? = null,
     val selectedPark: Park? = null,
-    val userLocation: GeoPoint? = null,
+    val userLocation: com.sonisoft.parkpulse.feature.parks.domain.model.UserLocation? = null,
     val hasLocationPermission: Boolean = false,
     val distanceToSelectedPark: Float? = null,
     val bearingToSelectedPark: String? = null,
     
-    // Phase 4 Drawing State
+    // Phase 4 & 7 Drawing State
     val isDrawingMode: Boolean = false,
     val drawingPoints: List<GeoPoint> = emptyList(),
     val drawingArea: Double = 0.0,
     val drawingPerimeter: Double = 0.0,
-    val showCreateParkForm: Boolean = false
+    val drawingError: String? = null,
+    val isWalkMode: Boolean = false,
+    val isWalking: Boolean = false,
+    val showCreateParkForm: Boolean = false,
+    val editingParkId: String? = null // if non-null, we are editing an existing park
 )

@@ -13,7 +13,7 @@ import kotlin.random.Random
 class MockSyncApi @Inject constructor() {
 
     // Simulates an API call with realistic latency and occasional failure
-    private suspend fun <T> simulateApiCall(onSuccessRemoteId: String): SyncResult<T> {
+    private suspend fun <T> simulateApiCall(onSuccessRemoteId: String, serverVersion: Int = 0): SyncResult<T> {
         delay(Random.nextLong(300, 1200)) // 300ms to 1.2s delay
 
         // 10% chance of random network/server failure for realism
@@ -21,13 +21,31 @@ class MockSyncApi @Inject constructor() {
         return if (shouldFail) {
             SyncResult.Error("Simulated server timeout or 503 error.")
         } else {
-            SyncResult.Success(onSuccessRemoteId)
+            SyncResult.Success(onSuccessRemoteId, serverVersion)
         }
     }
+    
+    // Memory map to store server versions for parks to test conflicts
+    private val serverParkVersions = mutableMapOf<String, Int>()
 
     suspend fun uploadPark(park: Park): SyncResult<Park> {
-        // Mock backend returns a prefixed remote ID mapping to the local UUID
-        return simulateApiCall("remote_park_${park.id}")
+        val currentServerVersion = serverParkVersions[park.id] ?: 0
+        
+        if (currentServerVersion > park.baseServerVersion) {
+            // Simulated version conflict
+            delay(500)
+            return SyncResult.Conflict("Version conflict detected. Server has v$currentServerVersion, client sent base v${park.baseServerVersion}.")
+        }
+        
+        val newServerVersion = park.baseServerVersion + 1
+        
+        val result = simulateApiCall<Park>("remote_park_${park.id}", newServerVersion)
+        
+        if (result is SyncResult.Success) {
+            serverParkVersions[park.id] = newServerVersion
+        }
+        
+        return result
     }
 
     suspend fun uploadSurvey(survey: Survey): SyncResult<Survey> {
@@ -38,5 +56,11 @@ class MockSyncApi @Inject constructor() {
         // Simulating payload upload overhead
         delay(500)
         return simulateApiCall("remote_photo_${photo.id}")
+    }
+    
+    // Helper to simulate a remote edit (used in testing)
+    fun simulateRemoteParkEdit(parkId: String) {
+        val current = serverParkVersions[parkId] ?: 0
+        serverParkVersions[parkId] = current + 1
     }
 }
