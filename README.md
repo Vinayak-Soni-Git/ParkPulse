@@ -273,6 +273,14 @@ The current mock synchronization implementation follows a local-first strategy:
 - Local changes are preserved rather than silently overwritten.
 - Failed synchronization does not delete local parks, surveys, or photos.
 
+### Concurrent Offline Edit Handling
+
+The current ParkPulse implementation supports creating parks offline and synchronizing pending records through a mock backend. Editing existing parks is not currently supported, so concurrent offline park-edit conflicts are not yet applicable to the implemented application.
+
+For a future multi-device implementation, I would introduce optimistic concurrency control using server-side version numbers. If two devices edit the same park from the same version, the backend would detect the version mismatch and return a conflict.
+
+Independent field changes could be merged where safe, while conflicting changes to the same field or park polygon geometry would require explicit resolution. Both versions would be preserved until the conflict is resolved, preventing silent data loss.
+
 ### Mock backend
 
 ParkPulse uses an in-process mock backend abstraction to simulate server communication.
