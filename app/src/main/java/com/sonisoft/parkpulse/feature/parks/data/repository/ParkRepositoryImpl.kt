@@ -90,7 +90,9 @@ class ParkRepositoryImpl @Inject constructor(
             sourceOsmType = park.source?.osmType,
             sourceOsmId = park.source?.osmId,
             sourceAttribution = park.source?.attribution,
-            sourceLicense = park.source?.license
+            sourceLicense = park.source?.license,
+            syncStatus = park.syncStatus.name,
+            remoteId = park.remoteId
         )
         
         val pointEntities = park.boundaryPoints.mapIndexed { index, point ->
@@ -134,5 +136,35 @@ class ParkRepositoryImpl @Inject constructor(
         return surveyPhotoDao.getPhotosForPark(parkId).map { entities ->
             entities.map { it.toDomainModel() }
         }
+    }
+
+    override fun getUnsyncedParks(): Flow<List<Park>> {
+        return parkDao.getUnsyncedParks().map { entities ->
+            entities.map { it.toDomainModel() }
+        }
+    }
+
+    override suspend fun updateParkSyncStatus(parkId: String, syncStatus: com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus, remoteId: String?) {
+        parkDao.updateParkSyncStatus(parkId, syncStatus.name, remoteId)
+    }
+
+    override fun getUnsyncedSurveys(): Flow<List<Survey>> {
+        return surveyDao.getUnsyncedSurveys().map { entities ->
+            entities.map { it.toDomainModel() }
+        }
+    }
+
+    override suspend fun updateSurveySyncStatus(surveyId: String, syncStatus: com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus, remoteId: String?) {
+        surveyDao.updateSurveySyncStatus(surveyId, syncStatus.name, remoteId)
+    }
+
+    override fun getUnsyncedPhotos(): Flow<List<SurveyPhoto>> {
+        return surveyPhotoDao.getUnsyncedPhotos().map { entities ->
+            entities.map { it.toDomainModel() }
+        }
+    }
+
+    override suspend fun updatePhotoSyncStatus(photoId: String, syncStatus: com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus, remoteId: String?) {
+        surveyPhotoDao.updatePhotoSyncStatus(photoId, syncStatus.name, remoteId)
     }
 }

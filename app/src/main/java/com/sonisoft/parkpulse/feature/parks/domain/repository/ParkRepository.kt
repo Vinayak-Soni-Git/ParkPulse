@@ -22,4 +22,12 @@ interface ParkRepository {
     suspend fun saveSurveyPhotos(photos: List<SurveyPhoto>)
     fun getPhotosForSurvey(surveyId: String): Flow<List<SurveyPhoto>>
     fun getPhotosForPark(parkId: String): Flow<List<SurveyPhoto>>
+    
+    // Sync related
+    fun getUnsyncedParks(): Flow<List<Park>>
+    suspend fun updateParkSyncStatus(parkId: String, syncStatus: com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus, remoteId: String?)
+    fun getUnsyncedSurveys(): Flow<List<Survey>>
+    suspend fun updateSurveySyncStatus(surveyId: String, syncStatus: com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus, remoteId: String?)
+    fun getUnsyncedPhotos(): Flow<List<SurveyPhoto>>
+    suspend fun updatePhotoSyncStatus(photoId: String, syncStatus: com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus, remoteId: String?)
 }

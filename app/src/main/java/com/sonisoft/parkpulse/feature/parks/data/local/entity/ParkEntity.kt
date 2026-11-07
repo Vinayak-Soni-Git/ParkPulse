@@ -24,5 +24,7 @@ data class ParkEntity(
     val sourceOsmType: String?,
     val sourceOsmId: Long?,
     val sourceAttribution: String?,
-    val sourceLicense: String?
+    val sourceLicense: String?,
+    val syncStatus: String = "PENDING",
+    val remoteId: String? = null
 )

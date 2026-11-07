@@ -7,6 +7,7 @@ import com.sonisoft.parkpulse.feature.parks.domain.model.ParkStatus
 import com.sonisoft.parkpulse.feature.parks.domain.usecase.GetParkStatisticsUseCase
 import com.sonisoft.parkpulse.feature.parks.domain.usecase.InitializeParkDatabaseUseCase
 import com.sonisoft.parkpulse.feature.parks.domain.usecase.SearchParksUseCase
+import com.sonisoft.parkpulse.feature.parks.domain.usecase.SyncManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +28,8 @@ class ParksViewModel @Inject constructor(
     private val initializeParkDatabaseUseCase: InitializeParkDatabaseUseCase,
     private val searchParksUseCase: SearchParksUseCase,
     private val getParkStatisticsUseCase: GetParkStatisticsUseCase,
-    private val logoutUseCase: LogoutUseCase
+    private val logoutUseCase: LogoutUseCase,
+    private val syncManager: SyncManager
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -47,8 +49,18 @@ class ParksViewModel @Inject constructor(
         filtersFlow.flatMapLatest { (query, status) -> searchParksUseCase(query, status) },
         getParkStatisticsUseCase(),
         _isInitializing,
-        _errorMessage
-    ) { (query, status), parks, stats, isInit, error ->
+        _errorMessage,
+        syncManager.syncState
+    ) { args: Array<Any?> ->
+        val filters = args[0] as Pair<String, ParkStatus?>
+        val query = filters.first
+        val status = filters.second
+        val parks = args[1] as List<com.sonisoft.parkpulse.feature.parks.domain.model.Park>
+        val stats = args[2] as com.sonisoft.parkpulse.feature.parks.domain.model.DashboardStatistics
+        val isInit = args[3] as Boolean
+        val error = args[4] as String?
+        val syncState = args[5] as com.sonisoft.parkpulse.feature.parks.domain.usecase.SyncState
+        
         ParksUiState(
             parks = parks,
             searchQuery = query,
@@ -56,7 +68,8 @@ class ParksViewModel @Inject constructor(
             statistics = stats,
             isLoading = false,
             isInitializingDatabase = isInit,
-            errorMessage = error
+            errorMessage = error,
+            syncState = syncState
         )
     }.stateIn(
         scope = viewModelScope,
@@ -92,6 +105,12 @@ class ParksViewModel @Inject constructor(
     fun onLogoutClick() {
         viewModelScope.launch {
             logoutUseCase()
+        }
+    }
+
+    fun syncNow() {
+        viewModelScope.launch {
+            syncManager.syncNow()
         }
     }
 }

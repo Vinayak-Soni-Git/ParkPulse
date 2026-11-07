@@ -13,5 +13,7 @@ data class Survey(
     val notes: String?,
     val createdAt: Long,
     val updatedAt: Long,
-    val isPendingSync: Boolean = true
+    val isPendingSync: Boolean = true,
+    val syncStatus: SyncStatus = SyncStatus.PENDING,
+    val remoteId: String? = null
 )

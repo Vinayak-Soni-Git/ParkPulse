@@ -21,4 +21,10 @@ interface SurveyPhotoDao {
 
     @Query("SELECT * FROM survey_photos WHERE parkId = :parkId ORDER BY createdAt DESC")
     fun getPhotosForPark(parkId: String): Flow<List<SurveyPhotoEntity>>
+    
+    @Query("UPDATE survey_photos SET syncStatus = :syncStatus, remoteId = :remoteId WHERE id = :photoId")
+    suspend fun updatePhotoSyncStatus(photoId: String, syncStatus: String, remoteId: String?)
+
+    @Query("SELECT * FROM survey_photos WHERE syncStatus = 'PENDING' OR syncStatus = 'FAILED'")
+    fun getUnsyncedPhotos(): Flow<List<SurveyPhotoEntity>>
 }

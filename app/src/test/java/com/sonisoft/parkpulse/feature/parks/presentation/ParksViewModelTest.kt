@@ -43,7 +43,13 @@ class ParksViewModelTest {
         every { searchUseCase(any(), any()) } returns flowOf(emptyList())
         every { statsUseCase() } returns flowOf(DashboardStatistics(10, 5, 3, 2))
 
-        viewModel = ParksViewModel(initUseCase, searchUseCase, statsUseCase, logoutUseCase)
+        viewModel = ParksViewModel(
+            initUseCase, 
+            searchUseCase, 
+            statsUseCase, 
+            logoutUseCase,
+            mockk(relaxed = true)
+        )
     }
 
     @After

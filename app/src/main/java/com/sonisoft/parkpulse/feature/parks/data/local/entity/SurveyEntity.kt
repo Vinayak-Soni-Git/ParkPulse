@@ -35,7 +35,9 @@ data class SurveyEntity(
     val notes: String?,
     val createdAt: Long,
     val updatedAt: Long,
-    val isPendingSync: Boolean
+    val isPendingSync: Boolean,
+    val syncStatus: String,
+    val remoteId: String? = null
 ) {
     fun toDomainModel(): Survey {
         return Survey(
@@ -51,7 +53,9 @@ data class SurveyEntity(
             notes = notes,
             createdAt = createdAt,
             updatedAt = updatedAt,
-            isPendingSync = isPendingSync
+            isPendingSync = isPendingSync,
+            syncStatus = com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.fromString(syncStatus),
+            remoteId = remoteId
         )
     }
 
@@ -70,7 +74,9 @@ data class SurveyEntity(
                 notes = survey.notes,
                 createdAt = survey.createdAt,
                 updatedAt = survey.updatedAt,
-                isPendingSync = survey.isPendingSync
+                isPendingSync = survey.isPendingSync,
+                syncStatus = survey.syncStatus.name,
+                remoteId = survey.remoteId
             )
         }
     }

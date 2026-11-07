@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CloudDone
+import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.CloudUpload
+import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -140,6 +144,40 @@ fun ParkCard(
                         fontSize = 10.sp
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                val syncIcon = when (park.syncStatus) {
+                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.SYNCED -> Icons.Rounded.CloudDone
+                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.PENDING -> Icons.Rounded.CloudOff
+                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.SYNCING -> Icons.Rounded.CloudUpload
+                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.FAILED -> Icons.Rounded.ErrorOutline
+                }
+                val syncColor = when (park.syncStatus) {
+                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.SYNCED -> ForestGreen
+                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.PENDING -> CharcoalLight
+                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.SYNCING -> Charcoal
+                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.FAILED -> ErrorRed
+                }
+
+                Icon(
+                    imageVector = syncIcon,
+                    contentDescription = park.syncStatus.name,
+                    tint = syncColor,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = park.syncStatus.name.lowercase().replaceFirstChar { it.titlecase() },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = syncColor,
+                    fontSize = 10.sp
+                )
             }
         }
     }

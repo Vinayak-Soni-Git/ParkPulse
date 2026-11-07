@@ -32,7 +32,9 @@ data class SurveyPhotoEntity(
     val longitude: Double,
     val accuracyMeters: Float,
     val createdAt: Long,
-    val isPendingSync: Boolean
+    val isPendingSync: Boolean,
+    val syncStatus: String,
+    val remoteId: String? = null
 ) {
     fun toDomainModel(): SurveyPhoto {
         return SurveyPhoto(
@@ -45,7 +47,9 @@ data class SurveyPhotoEntity(
             longitude = longitude,
             accuracyMeters = accuracyMeters,
             createdAt = createdAt,
-            isPendingSync = isPendingSync
+            isPendingSync = isPendingSync,
+            syncStatus = com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.fromString(syncStatus),
+            remoteId = remoteId
         )
     }
 
@@ -61,7 +65,9 @@ data class SurveyPhotoEntity(
                 longitude = photo.longitude,
                 accuracyMeters = photo.accuracyMeters,
                 createdAt = photo.createdAt,
-                isPendingSync = photo.isPendingSync
+                isPendingSync = photo.isPendingSync,
+                syncStatus = photo.syncStatus.name,
+                remoteId = photo.remoteId
             )
         }
     }

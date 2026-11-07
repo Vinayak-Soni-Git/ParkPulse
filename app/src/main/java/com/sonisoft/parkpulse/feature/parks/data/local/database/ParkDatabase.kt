@@ -17,7 +17,7 @@ import com.sonisoft.parkpulse.feature.parks.data.local.entity.SurveyPhotoEntity
         SurveyEntity::class,
         SurveyPhotoEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class ParkDatabase : RoomDatabase() {

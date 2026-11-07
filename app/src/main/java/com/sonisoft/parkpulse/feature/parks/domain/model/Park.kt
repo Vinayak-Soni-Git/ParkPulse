@@ -12,5 +12,7 @@ data class Park(
     val boundaryPoints: List<GeoPoint>,
     val boundaryQuality: BoundaryQuality,
     val statusIsDemo: Boolean,
-    val source: ParkSource?
+    val source: ParkSource?,
+    val syncStatus: SyncStatus = SyncStatus.PENDING,
+    val remoteId: String? = null
 )

@@ -42,7 +42,9 @@ data class ParkWithBoundaryPoints(
             boundaryPoints = sortedPoints,
             boundaryQuality = park.boundaryQuality,
             statusIsDemo = park.statusIsDemo,
-            source = source
+            source = source,
+            syncStatus = com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.fromString(park.syncStatus),
+            remoteId = park.remoteId
         )
     }
 }

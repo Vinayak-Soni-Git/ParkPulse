@@ -28,6 +28,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.CloudDone
+import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.LocationOn
@@ -726,7 +729,30 @@ private fun HistoryView(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             val timeStr = SimpleDateFormat("MMM dd, yyyy - hh:mm a", Locale.getDefault()).format(Date(survey.createdAt))
-                            Text(timeStr, fontWeight = FontWeight.Bold, color = Charcoal)
+                            
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                val syncIcon = when (survey.syncStatus) {
+                                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.SYNCED -> Icons.Rounded.CloudDone
+                                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.PENDING -> Icons.Rounded.CloudOff
+                                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.SYNCING -> Icons.Rounded.CloudUpload
+                                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.FAILED -> Icons.Rounded.ErrorOutline
+                                }
+                                val syncColor = when (survey.syncStatus) {
+                                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.SYNCED -> ForestGreen
+                                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.PENDING -> CharcoalLight
+                                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.SYNCING -> Charcoal
+                                    com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.FAILED -> ErrorRed
+                                }
+
+                                Icon(
+                                    imageVector = syncIcon,
+                                    contentDescription = survey.syncStatus.name,
+                                    tint = syncColor,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(timeStr, fontWeight = FontWeight.Bold, color = Charcoal)
+                            }
 
                             val (badgeColor, badgeText) = when (survey.cleanliness) {
                                 CleanlinessRating.GOOD -> ForestGreen to "GOOD"

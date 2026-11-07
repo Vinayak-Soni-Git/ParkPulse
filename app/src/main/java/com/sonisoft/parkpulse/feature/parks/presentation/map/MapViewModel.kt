@@ -200,7 +200,9 @@ class MapViewModel @Inject constructor(
                 boundaryPoints = state.drawingPoints,
                 boundaryQuality = BoundaryQuality.VERIFIED, // It's manually drawn by user
                 statusIsDemo = false,
-                source = null
+                source = null,
+                syncStatus = com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.PENDING,
+                remoteId = null
             )
             
             parkRepository.savePark(newPark)

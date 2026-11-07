@@ -10,5 +10,7 @@ data class SurveyPhoto(
     val longitude: Double,
     val accuracyMeters: Float,
     val createdAt: Long,
-    val isPendingSync: Boolean = true
+    val isPendingSync: Boolean = true,
+    val syncStatus: SyncStatus = SyncStatus.PENDING,
+    val remoteId: String? = null
 )

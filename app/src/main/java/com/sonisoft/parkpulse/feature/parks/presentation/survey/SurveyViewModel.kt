@@ -335,10 +335,12 @@ class SurveyViewModel @Inject constructor(
                 notes = state.notes.ifBlank { null },
                 createdAt = now,
                 updatedAt = now,
-                isPendingSync = true
+                isPendingSync = true,
+                syncStatus = com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.PENDING,
+                remoteId = null
             )
 
-            val photosToSave = state.attachedPhotos.map { it.copy(surveyId = surveyId) }
+            val photosToSave = state.attachedPhotos.map { it.copy(surveyId = surveyId, syncStatus = com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.PENDING, remoteId = null) }
 
             parkRepository.saveSurvey(survey)
             if (photosToSave.isNotEmpty()) {
@@ -434,7 +436,9 @@ class SurveyViewModel @Inject constructor(
             longitude = loc.longitude,
             accuracyMeters = loc.accuracyMeters,
             createdAt = System.currentTimeMillis(),
-            isPendingSync = true
+            isPendingSync = true,
+            syncStatus = com.sonisoft.parkpulse.feature.parks.domain.model.SyncStatus.PENDING,
+            remoteId = null
         )
 
         _uiState.update {

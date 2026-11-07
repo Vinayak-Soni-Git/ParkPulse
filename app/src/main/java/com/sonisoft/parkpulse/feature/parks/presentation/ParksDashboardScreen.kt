@@ -1,6 +1,5 @@
 package com.sonisoft.parkpulse.feature.parks.presentation
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,10 +20,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Eco
+import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -47,11 +49,11 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.sonisoft.parkpulse.core.designsystem.theme.CardWhite
 import com.sonisoft.parkpulse.core.designsystem.theme.Charcoal
 import com.sonisoft.parkpulse.core.designsystem.theme.CharcoalLight
+import com.sonisoft.parkpulse.core.designsystem.theme.ErrorRed
 import com.sonisoft.parkpulse.core.designsystem.theme.ForestGreen
 import com.sonisoft.parkpulse.core.designsystem.theme.ForestGreenDark
 import com.sonisoft.parkpulse.core.designsystem.theme.OffWhite
@@ -167,6 +169,14 @@ fun ParksDashboardScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Sync Card
+            SyncSummaryCard(
+                syncState = uiState.syncState,
+                onSyncClick = { viewModel.syncNow() }
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+
             // Filters
             Row(
                 modifier = Modifier
@@ -267,6 +277,69 @@ fun ParksDashboardScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun SyncSummaryCard(
+    syncState: com.sonisoft.parkpulse.feature.parks.domain.usecase.SyncState,
+    onSyncClick: () -> Unit
+) {
+    androidx.compose.material3.Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = CardWhite),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val (icon, color) = when {
+                        syncState.isSyncing -> Icons.Rounded.Sync to ForestGreen
+                        syncState.error != null -> Icons.Rounded.ErrorOutline to ErrorRed
+                        syncState.totalPending > 0 -> Icons.Rounded.Sync to Charcoal
+                        else -> Icons.Rounded.CheckCircle to ForestGreen
+                    }
+                    
+                    Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = when {
+                            syncState.isSyncing -> "Syncing..."
+                            syncState.error != null -> "Sync Failed"
+                            syncState.totalPending > 0 -> "${syncState.totalPending} pending items"
+                            else -> "All synced"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = color
+                    )
+                }
+                
+                if (syncState.error != null) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = syncState.error,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ErrorRed
+                    )
+                }
+            }
+            
+            androidx.compose.material3.Button(
+                onClick = onSyncClick,
+                enabled = !syncState.isSyncing,
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = ForestGreen),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text("Sync Now", style = MaterialTheme.typography.labelMedium)
             }
         }
     }

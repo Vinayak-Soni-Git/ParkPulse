@@ -18,4 +18,10 @@ interface SurveyDao {
 
     @Query("SELECT * FROM surveys WHERE id = :surveyId")
     fun getSurveyById(surveyId: String): Flow<SurveyEntity?>
+    
+    @Query("UPDATE surveys SET syncStatus = :syncStatus, remoteId = :remoteId WHERE id = :surveyId")
+    suspend fun updateSurveySyncStatus(surveyId: String, syncStatus: String, remoteId: String?)
+
+    @Query("SELECT * FROM surveys WHERE syncStatus = 'PENDING' OR syncStatus = 'FAILED'")
+    fun getUnsyncedSurveys(): Flow<List<SurveyEntity>>
 }

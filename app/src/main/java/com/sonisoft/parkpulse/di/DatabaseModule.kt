@@ -67,6 +67,25 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Add syncStatus and remoteId to parks
+            db.execSQL("ALTER TABLE `parks` ADD COLUMN `syncStatus` TEXT NOT NULL DEFAULT 'SYNCED'")
+            db.execSQL("ALTER TABLE `parks` ADD COLUMN `remoteId` TEXT DEFAULT NULL")
+            db.execSQL("UPDATE `parks` SET `syncStatus` = 'PENDING' WHERE `isPendingSync` = 1")
+
+            // Add syncStatus and remoteId to surveys
+            db.execSQL("ALTER TABLE `surveys` ADD COLUMN `syncStatus` TEXT NOT NULL DEFAULT 'PENDING'")
+            db.execSQL("ALTER TABLE `surveys` ADD COLUMN `remoteId` TEXT DEFAULT NULL")
+            db.execSQL("UPDATE `surveys` SET `syncStatus` = 'SYNCED' WHERE `isPendingSync` = 0")
+
+            // Add syncStatus and remoteId to survey_photos
+            db.execSQL("ALTER TABLE `survey_photos` ADD COLUMN `syncStatus` TEXT NOT NULL DEFAULT 'PENDING'")
+            db.execSQL("ALTER TABLE `survey_photos` ADD COLUMN `remoteId` TEXT DEFAULT NULL")
+            db.execSQL("UPDATE `survey_photos` SET `syncStatus` = 'SYNCED' WHERE `isPendingSync` = 0")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideParkDatabase(@ApplicationContext context: Context): ParkDatabase {
@@ -75,7 +94,7 @@ object DatabaseModule {
             ParkDatabase::class.java,
             "park_pulse_db"
         )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
         .fallbackToDestructiveMigration()
         .build()
     }
