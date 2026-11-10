@@ -74,6 +74,7 @@ fun CameraScreen(
 
     var hasCameraPermission by remember { mutableStateOf(false) }
     var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_BACK) }
+    var lensFacing2 by remember{mutableIntStateOf(CameraSelector.LENS_FACING_FRONT)}
     var flashMode by remember { mutableIntStateOf(ImageCapture.FLASH_MODE_OFF) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -141,6 +142,7 @@ fun CameraScreen(
 
             val cameraSelector = CameraSelector.Builder()
                 .requireLensFacing(lensFacing)
+                .requireLensFacing(lensFacing2)
                 .build()
 
             imageCapture.flashMode = flashMode
@@ -230,11 +232,8 @@ fun CameraScreen(
         ) {
             // Front/Rear Camera switch
             IconButton(onClick = {
-                lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
-                    CameraSelector.LENS_FACING_FRONT
-                } else {
-                    CameraSelector.LENS_FACING_BACK
-                }
+                lensFacing = CameraSelector.LENS_FACING_BACK
+                lensFacing2 = CameraSelector.LENS_FACING_FRONT
             }) {
                 Icon(Icons.Filled.Cameraswitch, contentDescription = "Switch Camera", tint = Color.White, modifier = Modifier.size(32.dp))
             }

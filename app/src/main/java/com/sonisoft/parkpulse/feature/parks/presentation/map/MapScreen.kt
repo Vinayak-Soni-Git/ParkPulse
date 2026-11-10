@@ -1,7 +1,6 @@
 package com.sonisoft.parkpulse.feature.parks.presentation.map
 
 import android.Manifest
-import android.content.Context
 import android.preference.PreferenceManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,8 +28,6 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -41,7 +38,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -64,8 +60,8 @@ import com.sonisoft.parkpulse.core.designsystem.theme.CharcoalLight
 import com.sonisoft.parkpulse.core.designsystem.theme.ErrorRed
 import com.sonisoft.parkpulse.core.designsystem.theme.ForestGreen
 import com.sonisoft.parkpulse.core.designsystem.theme.ForestGreenDark
-import com.sonisoft.parkpulse.core.designsystem.theme.OffWhite
 import com.sonisoft.parkpulse.core.designsystem.theme.LightGrey
+import com.sonisoft.parkpulse.core.designsystem.theme.OffWhite
 import com.sonisoft.parkpulse.feature.parks.domain.model.GeoPoint
 import com.sonisoft.parkpulse.feature.parks.domain.model.Park
 import com.sonisoft.parkpulse.feature.parks.domain.model.ParkStatus
@@ -73,16 +69,14 @@ import kotlinx.coroutines.launch
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint as OsmGeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.Polygon
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
-import android.view.MotionEvent
+import org.osmdroid.util.GeoPoint as OsmGeoPoint
 
 @Composable
 fun MapScreen(

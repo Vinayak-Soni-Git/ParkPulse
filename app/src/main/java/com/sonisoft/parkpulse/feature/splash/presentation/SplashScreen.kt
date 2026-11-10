@@ -39,6 +39,7 @@ import com.sonisoft.parkpulse.core.designsystem.theme.ForestGreen
 import com.sonisoft.parkpulse.core.designsystem.theme.ForestGreenDark
 import com.sonisoft.parkpulse.core.designsystem.theme.OffWhite
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun SplashScreen(
@@ -63,7 +64,7 @@ fun SplashScreen(
     // Animation sequence
     LaunchedEffect(key1 = true) {
         // 1. Splash screen appears with a subtle fade-in
-        delay(400) // Initial fade-in buffer
+        delay(400.milliseconds) // Initial fade-in buffer
         startLottie = true
 
         // 2. Lottie animation starts playing. Wait a bit before showing text.

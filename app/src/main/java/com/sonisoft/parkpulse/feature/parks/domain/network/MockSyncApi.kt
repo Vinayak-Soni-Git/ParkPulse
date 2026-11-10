@@ -8,13 +8,14 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class MockSyncApi @Inject constructor() {
 
     // Simulates an API call with realistic latency and occasional failure
     private suspend fun <T> simulateApiCall(onSuccessRemoteId: String, serverVersion: Int = 0): SyncResult<T> {
-        delay(Random.nextLong(300, 1200)) // 300ms to 1.2s delay
+        delay(Random.nextLong(300, 1200).milliseconds) // 300ms to 1.2s delay
 
         // 10% chance of random network/server failure for realism
         val shouldFail = Random.nextFloat() < 0.10f

@@ -34,8 +34,6 @@ import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material.icons.rounded.Park
-import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -69,7 +67,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -85,7 +82,6 @@ import com.sonisoft.parkpulse.core.designsystem.theme.OffWhite
 import com.sonisoft.parkpulse.feature.parks.domain.model.CleanlinessRating
 import com.sonisoft.parkpulse.feature.parks.domain.model.Survey
 import com.sonisoft.parkpulse.feature.parks.domain.model.SurveyPhoto
-import com.sonisoft.parkpulse.feature.parks.domain.usecase.ValidateCheckInUseCase
 import com.sonisoft.parkpulse.feature.parks.presentation.camera.CameraScreen
 import com.sonisoft.parkpulse.feature.parks.presentation.camera.PhotoPreviewDialog
 import com.sonisoft.parkpulse.feature.parks.presentation.survey.components.PhotoViewerDialog
